@@ -1,9 +1,9 @@
 (ns pairwise.cljsmacros
-  (:refer-clojure :exclude [slurp]))
+  ;(:refer-clojure :exclude [slurp])
+  )
 
-(defmacro slurp [file]
+(defmacro read-file [file]
   (clojure.core/slurp file))
 
-(slurp "/home/gtk/work/zb4171/kallisto.md")
 
 
