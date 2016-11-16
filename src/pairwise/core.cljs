@@ -2,7 +2,8 @@
   (:require [reagent.core :as reagent :refer (atom)]
             [pairwise.linear :as linear]
             [pairwise.substitution :as sub]
-            [pairwise.cljsmacros :include-macros true :refer [read-file]]))
+            [pairwise.cljsmacros :include-macros true :refer [read-file]])
+  (:refer-clojure))
 
 (enable-console-print!)
 
@@ -18,13 +19,13 @@
 (defonce BLOSUM62 (sub/scoring-matrix (read-file "resources/data/BLOSUM62.txt")) )
 (defonce BLOSUM50 (sub/scoring-matrix (read-file "resources/data/BLOSUM50.txt")) )
 
+(defonce app-item-id (atom 0))
 
 (let [S  BLOSUM62
       s1 "HEAGAWGHEE"
       s2 "PAWHEAE"
       d  8]
-      (def app-state (
-                      atom {:top-seq        s1
+  (def app-state (atom {:top-seq        s1
                             :bottom-seq     s2
                             :scoring-matrix BLOSUM50
                             :sequence-type  :protein
@@ -36,32 +37,51 @@
       )
 
 
+(defn draw-arrow [app-state [c r]]
+  (let [x1 (+ 25 (* c 50))
+        y1 (+ 25 (* r 50))
+        from-seq (get-in app-state [:result :dp-matrix  r c :from])
+        xpos (fn [[r c]] (+ 25 (* 50 c)))
+        ypos (fn [[r c]] (+ 25 (* 50 r)))
+        ]
+    (map  #(if-not (nil? %1)
+                           [:line { :stroke "gray" :stroke-width 2 :x1 x1 :x2 (xpos %1) :y1 y1
+                      :y2 (ypos %1)}] )  from-seq)))
 
-(defn draw-cell [app-state [i j]]
-  (let [x (* i 50)
-        y (* j 50)]
-      [:g
-   [:rect {:x x :y y :width 50 :height 50 :fill "white" :stroke "gray" }]
-       [:text {:x (+ x  25) :y (+ y 25) :text-anchor "middle" :alignment-baseline "middle" :font-family "Verdana"} (get-in app-state [:result :dp-matrix  j i :score])]]
+(defn draw-mask [app-state [c r]]
+  (let [x1 (+ 25 (* c 50))
+        y1 (+ 25 (* r 50))]
+    [:circle {:cx x1 :cy y1 :r 12 :fill "white"}]))
+
+(defn draw-cell [app-state [c r]]
+  (let [x (* c 50)
+        y (* r 50)
+        score (get-in app-state [:result :dp-matrix  r c :score])]
+    [:g
+     [:rect {:x x :y y :width 50 :height 50 :fill "none" :stroke "gray" :stroke-width 0.2}]
+     [:text {:x (+ x  25) :y (+ y 25) :text-anchor "middle" :alignment-baseline "middle" :font-family "Verdana" :font-size "70%" :stroke "black"} score]
+     ]
     )
   )
+
+
 
 (defn svg-component [ app-state & args ]
   (let [ij      (for [cols (range (count (get-in app-state [:result :dp-matrix 0])))
                       rows (range (count (get-in app-state [:result :dp-matrix])))]
-                  [rows cols])
-        ]
-      [:svg {:width   (str (* (count (:top-seq app-state)) 50)) 
-         :height  (str (* (count (:bottom-seq app-state)) 50)) 
+                  [cols rows])
+        cols (count (get-in app-state [:result :dp-matrix 0]))
+        rows (count (get-in app-state [:result :dp-matrix]))]
+
+      [:svg {:width   (str (* cols 50)) 
+             :height  (str (* rows 50)) 
          :id    "canvas"
          :style {:outline          "2px solid black"
                  :background-color "#fff"}}
+       (map (partial draw-arrow app-state) ij)
+       (map (partial draw-mask app-state) ij)
        (map (partial draw-cell app-state) ij)
-       ;(map-indexed #(identity [:text {:text-anchor "middle" :alignment-baseline "middle" :font-family "Verdana" :x (+ 25 (* 50 %1)) :y 25 } (str %2)]) (seq (:top-seq app-state)))
-       ;(map-indexed #(identity [:text {:text-anchor "middle" :alignment-baseline "middle" :font-family "Verdana" :x 25 :y (+ (* 50 %1) 25) } (str %2)]) (seq (:bottom-seq app-state)))
-   #_(map str (map-indexed #(identity [:text {:x (* 50 %1) :y 10 } (str %2)]) (seq (:top-seq app-state))))]
-    )
-)
+       ]))
 
 
 
@@ -83,7 +103,7 @@
 ])))
 
 (defn display-alignment [{:keys [top bottom]}]
-  [list top [:br] bottom [:br] [:br]])
+  ^{:key (swap! app-item-id inc)} [:p top [:br] bottom [:br] [:br]])
 
 (defn summarize-alignment [{:keys [sequence-type alignment-type result]}]
   [:h2
@@ -102,10 +122,10 @@
        [:h3 "scoring matrix: " (:scoring-matrix-name @app-state)
         [:br] "gap penalty: "(:d @app-state)]
          (if (:result @app-state)
-           (println (get-in @app-state [:result :dp-matrix 0 1]))
+
            [:div [:h2
                   [:pre
-                     (mapcat display-alignment (:alignments (:result @app-state)))]]
+                     (map display-alignment (:alignments (:result @app-state)))]]
             (summarize-alignment @app-state)])]))
 
 
