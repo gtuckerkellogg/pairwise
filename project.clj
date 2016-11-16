@@ -9,6 +9,7 @@
                   :exclusions [org.clojure/tools.reader]]
                  [cljsjs/bootstrap "3.3.6-1"]
                  [binaryage/devtools "0.8.3"]
+                 [hiccup "1.0.5"]
                  [reagent "0.6.0"]]
 
   :plugins [[lein-figwheel "0.5.8"]

@@ -85,8 +85,7 @@
   [alignments outfile]
   (let [spitout #(spit outfile %1 :append true)
         ij      (for [cols (range (count (first (:dp-matrix alignments))))
-                      rows (range (count (:dp-matrix alignments))) 
-                      ]
+                      rows (range (count (:dp-matrix alignments)))]
                   [rows cols])
         content (flatten  [(draw-grid (:sequence-1 alignments) (:sequence-2 alignments))
                            (map #(draw-score (:dp-matrix alignments) %1) ij)
