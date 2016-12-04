@@ -3,7 +3,9 @@
             [reagent-forms.core :refer [bind-fields init-field value-of]]
             [pairwise.linear :as linear]
             [pairwise.substitution :as sub]
-            [pairwise.cljsmacros :include-macros true :refer [read-file]])
+            ;[pairwise.cljsmacros :include-macros true :refer [read-file]]
+            )
+  (:require-macros [pairwise.cljsmacros :refer [read-file]])
   (:refer-clojure))
 
 (enable-console-print!)
@@ -11,32 +13,16 @@
 
 ;; define your app data so that it doesn't get over-written on reload
 
-(defn app-results [app-state]
-  (linear/pairwise-align (:top-seq app-state)
-                         (:bottom-seq app-state)
-                         (:scoring-matrix app-state)
-                         (:d app-state) :type (:alignment-type app-state)))
-
 (defonce BLOSUM62 (sub/scoring-matrix (read-file "resources/data/BLOSUM62.txt")) )
 (defonce BLOSUM50 (sub/scoring-matrix (read-file "resources/data/BLOSUM50.txt")) )
 
 (defonce app-item-id (atom 0))
 
-(let [S  BLOSUM62
-      s1 "HEAGAWGHEE"
-      s2 "PAWHEAE"
-      d  8]
-  (def app-state (atom {:top-seq        s1
-                            :bottom-seq     s2
-                            :scoring-matrix BLOSUM50
-                            :sequence-type  :protein
-                            :alignment-type :global
-                            :scoring-matrix-name "BLOSUM50"
-                            :d              d
-                            ;:result (app-results @app-state)
-                            }))
-      )
-
+(defn app-results [app-state]
+  (linear/pairwise-align (:top-seq app-state)
+                         (:bottom-seq app-state)
+                         (:scoring-matrix app-state)
+                         (:gap-penalty app-state) :type (:alignment-type app-state)))
 
 (defn draw-arrow [app-state [c r]]
   (let [x1 (+ 25 (* c 50))
@@ -85,11 +71,84 @@
        ]))
 
 
+(defn row [label input]
+  [:div.row
+   [:div.col-md-2 [:label label]]
+   [:div.col-md-5 input]])
 
-(defn update-s1! [s]
-  (swap! app-state assoc [:top-seq] s))
+(defn input [label type id]
+  (row label [:input.form-control {:field type :id id}]))
 
-(defn input-sequence [which-seq]
+(def form-template
+  [:div
+   (input "Top sequence" :text :top-seq)
+   (input "Bottom sequence" :text :bottom-seq)
+   (row "Scoring matrix" 
+        [:div.btn-group {:field :single-select :id :scoring-matrix}
+         [:button.btn.btn-default {:key BLOSUM50 } "BLOSUM50"]
+         [:button.btn.btn-default {:key BLOSUM62 } "BLOSUM62"]])
+
+   (row    [:label
+            {:field :label
+             :preamble "Linear gap penalty: "
+             :placeholder "N/A"
+             :id :gap-penalty}]
+           [:input.form-control
+            {:field :range :min 0 :max 10 :id :gap-penalty}]
+           )
+   (row "Alignment type" 
+        [:div.btn-group {:field :single-select :id :alignment-type}
+         [:button.btn.btn-default {:key :global} "Needleman-Wunsch"]
+         [:button.btn.btn-default {:key :local} "Smith-Waterman"]])
+   
+
+   ]
+  )
+
+
+
+
+(defn display-alignment [{:keys [top bottom]}]
+  ^{:key (swap! app-item-id inc)} [:p top [:br] bottom [:br] [:br]])
+
+(defn summarize-alignment [{:keys [sequence-type alignment-type result]}]
+  [:h2
+   (clojure.string/capitalize (name alignment-type)) " "
+   (name sequence-type) " alignment score: "
+   (:score result)])
+
+
+(def app-state (atom {:top-seq     "HEAGAWGHEE"
+                   :bottom-seq     "PAWHEAE"
+                   :scoring-matrix BLOSUM50
+                   :gap-penalty          8
+                   :sequence-type  :protein
+                   :alignment-type :global
+                   :scoring-matrix-name "BLOSUM50"
+                   }))
+
+
+(defn page []
+      (fn []
+        [:div
+         [:div.page-header [:h1 "Pairwise alignment visualisation"]]
+         [bind-fields
+          form-template
+          app-state
+          (fn [id value {:keys [top-seq bottom-seq scoring-matrix gap-penalty :alignment-type] :as doc}]
+            (assoc-in doc [:result] (app-results doc)))
+          ]
+
+
+         (if (:result @app-state)
+         [:div [:h2
+                [:pre
+                 (map display-alignment (:alignments (:result @app-state)))]]
+          (summarize-alignment @app-state)
+          (svg-component @app-state)
+          ])]))
+
+#_(defn input-sequence [which-seq]
   (let [val (atom "")]
     (fn []
       [:div
@@ -103,39 +162,9 @@
                                )}]
        ])))
 
-(defn row [label input]
-  [:div.row
-   [:div.col-md-2 [:label label]]
-   [:div.col-md-5 input]])
-
-(defn display-alignment [{:keys [top bottom]}]
-  ^{:key (swap! app-item-id inc)} [:p top [:br] bottom [:br] [:br]])
-
-(defn summarize-alignment [{:keys [sequence-type alignment-type result]}]
-  [:h2
-   (clojure.string/capitalize (name alignment-type)) " "
-   (name sequence-type) " alignment score: "
-   (:score result)])
 
 
-(defn home-page []
-  (fn []
-
-        [:div
-         (svg-component @app-state)
-       [input-sequence :top-seq]
-       [input-sequence :bottom-seq]
-       [:h3 "scoring matrix: " (:scoring-matrix-name @app-state)
-        [:br] "gap penalty: "(:d @app-state)]
-         (if (:result @app-state)
-
-           [:div [:h2
-                  [:pre
-                     (map display-alignment (:alignments (:result @app-state)))]]
-            (summarize-alignment @app-state)])]))
-
-
-(reagent/render-component [home-page]
+(reagent/render-component [page]
                           (. js/document (getElementById "app")))
 
 (defn on-js-reload []
