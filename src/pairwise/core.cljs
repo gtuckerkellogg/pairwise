@@ -1,5 +1,6 @@
 (ns pairwise.core
   (:require [reagent.core :as reagent :refer (atom)]
+            [reagent-forms.core :refer [bind-fields init-field value-of]]
             [pairwise.linear :as linear]
             [pairwise.substitution :as sub]
             [pairwise.cljsmacros :include-macros true :refer [read-file]])
@@ -100,7 +101,12 @@
                                (swap! app-state assoc which-seq  @val)
                                (swap! app-state assoc :result (app-results @app-state))
                                )}]
-])))
+       ])))
+
+(defn row [label input]
+  [:div.row
+   [:div.col-md-2 [:label label]]
+   [:div.col-md-5 input]])
 
 (defn display-alignment [{:keys [top bottom]}]
   ^{:key (swap! app-item-id inc)} [:p top [:br] bottom [:br] [:br]])
