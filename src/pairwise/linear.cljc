@@ -175,6 +175,8 @@
         paths        (findpaths D type)
         ]
     {:score          (alignment-score D type)
+     :rows (count (seq s2))
+     :cols (count (seq s1))
      :optimal-paths  paths
      :alignments     (map  #(path-to-alignment %1 s1 s2) paths)
      :dp-matrix      D
