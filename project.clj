@@ -54,7 +54,14 @@
                 :compiler     {:output-to     "resources/public/js/compiled/pairwise.js"
                                :main          pairwise.core
                                :optimizations :advanced
-                               :pretty-print  false}}]}
+                               :pretty-print  false}}
+               {:id           "demo"
+                :source-paths ["src"]
+                :compiler     {:output-to     "gh-pages/js/compiled/pairwise.js"
+                               :main          pairwise.core
+                               :optimizations :advanced
+                               :pretty-print  false}}
+               ]}
   :figwheel {;; :http-server-root "public" ;; default and assumes "resources"
              ;; :server-port 3449 ;; default
              ;; :server-ip "127.0.0.1"
