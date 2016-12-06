@@ -85,36 +85,38 @@
   (row label [:input.form-control {:field type :id id}]))
 
 (def form-template
-  [:div {:class "panel panel-primary"}
-   [:div.panel-heading "Algorithm Parameters"]
-   [:div.panel-body 
+  [:div [:div {:class "panel panel-primary"}
+         [:div.panel-heading "Input sequences"]
+         [:div.panel-body
+          (input "Top sequence" :text :top-seq)
+          (input "Bottom sequence" :text :bottom-seq)]]
+   [:div {:class "panel panel-primary"}
+    [:div.panel-heading "Algorithm Parameters"]
+    [:div.panel-body 
 
-    (input "Top sequence" :text :top-seq)
 
-    (input "Bottom sequence" :text :bottom-seq)
+     (row "scoring-matrix"
+          [:select.form-control {:field :list :id :scoring-matrix}
+           [:option {:key :blosum62} "BLOSUM62"]
+           [:option {:key :blosum50} "BLOSUM50"]
+           [:option {:key :pam250} "PAM250"]
+           [:option {:key :pam120} "PAM120"]
+           [:option {:key :pam40} "PAM40"]
+           
+           ])
 
-    (row "scoring-matrix"
-         [:select.form-control {:field :list :id :scoring-matrix}
-          [:option {:key :blosum62} "BLOSUM62"]
-          [:option {:key :blosum50} "BLOSUM50"]
-          [:option {:key :pam250} "PAM250"]
-          [:option {:key :pam120} "PAM120"]
-          [:option {:key :pam40} "PAM40"]
-          
-          ])
-
-    (row [:label
-             {:field :label
-              :preamble "Linear gap penalty: "
-              :placeholder "N/A"
-              :id :gap-penalty}]
-            [:input.form-control
-             {:field :range :min 0 :max 15 :id :gap-penalty}]
-            )
-    (row "Alignment algorithm" 
-         [:div.btn-group {:field :single-select :id :alignment-type}
-          [:button.btn.btn-default {:key :global} "Needleman-Wunsch"]
-          [:button.btn.btn-default {:key :local} "Smith-Waterman"]])]])
+     (row [:label
+           {:field :label
+            :preamble "Linear gap penalty: "
+            :placeholder "N/A"
+            :id :gap-penalty}]
+          [:input.form-control
+           {:field :range :min 0 :max 15 :id :gap-penalty}]
+          )
+     (row "Alignment algorithm" 
+          [:div.btn-group {:field :single-select :id :alignment-type}
+           [:button.btn.btn-default {:key :global} "Needleman-Wunsch"]
+           [:button.btn.btn-default {:key :local} "Smith-Waterman"]])]]])
 
 
 
