@@ -104,19 +104,10 @@
     )
   )
 
-#_(let [s1 "IMILAAAARRR"
-      s2 "SIMILRR"
-      S  (simple-substitution-matrix :protein :same 5 :different -3)
-      d 3
-      result (pairwise/pairwise-align s1 s2 S d :type :local)]
-  (tikz-alignment result "resources/tikz/out.tex")
-  )
-
 (let [S  (scoring-matrix "resources/data/BLOSUM50.txt")
       s1 "HEAGAWGHEE"
       s2 "PAWHEE"
       d 8
       result (pairwise/pairwise-align s1 s2 S d :type :global)]
   (tikz-alignment result "resources/tikz/out.tex")
-;  (:alignments result)
   )

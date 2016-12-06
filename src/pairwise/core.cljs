@@ -15,10 +15,10 @@
 (defonce scoring-matrices {
                            :blosum62 (sub/scoring-matrix (read-file "resources/data/BLOSUM62.txt")) 
                            :blosum50 (sub/scoring-matrix (read-file "resources/data/BLOSUM50.txt")) 
+                           :pam250 (sub/scoring-matrix (read-file "resources/data/PAM250.txt")) 
+                           :pam120 (sub/scoring-matrix (read-file "resources/data/PAM120.txt")) 
+                           :pam40 (sub/scoring-matrix (read-file "resources/data/PAM40.txt")) 
                            })
-
-#_(defonce BLOSUM62 (sub/scoring-matrix (read-file "resources/data/BLOSUM62.txt")) )
-#_(defonce BLOSUM50 (sub/scoring-matrix (read-file "resources/data/BLOSUM50.txt")) )
 
 (defonce app-item-id (atom 0))
 
@@ -96,7 +96,12 @@
     (row "scoring-matrix"
          [:select.form-control {:field :list :id :scoring-matrix}
           [:option {:key :blosum62} "BLOSUM62"]
-          [:option {:key :blosum50} "BLOSUM50"]])
+          [:option {:key :blosum50} "BLOSUM50"]
+          [:option {:key :pam250} "PAM250"]
+          [:option {:key :pam120} "PAM120"]
+          [:option {:key :pam40} "PAM40"]
+          
+          ])
 
     (row [:label
              {:field :label
@@ -104,7 +109,7 @@
               :placeholder "N/A"
               :id :gap-penalty}]
             [:input.form-control
-             {:field :range :min 0 :max 10 :id :gap-penalty}]
+             {:field :range :min 0 :max 15 :id :gap-penalty}]
             )
     (row "Alignment algorithm" 
          [:div.btn-group {:field :single-select :id :alignment-type}
