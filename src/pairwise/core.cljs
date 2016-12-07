@@ -54,7 +54,14 @@
      ]
     ))
 
+(defn draw-top-seq [app-state]
+  (let [draw-a-letter (fn [i x] [:text {:x (+ 25 (* (inc i) 50)) :y -25 :font-size "150%" :text-anchor "middle" :alignment-baseline "middle"} x])]
+    (map-indexed draw-a-letter (seq (:top-seq app-state)))))
 
+(defn draw-left-seq [app-state]
+  (let [draw-a-letter (fn [i x]
+                        [:text {:y (+ 25 (* (inc i) 50)) :x -25 :font-size "150%" :text-anchor "middle" :alignment-baseline "middle"} x])]
+    (map-indexed draw-a-letter (seq (:bottom-seq app-state)))))
 
 (defn svg-component [ app-state & args ]
   (let [ij      (for [cols (range (count (get-in app-state [:result :dp-matrix 0])))
@@ -64,15 +71,19 @@
         rows (count (get-in app-state [:result :dp-matrix]))
         draw-opt (fn [paths] (map #(draw-arrow app-state %1 :stroke "red" :stroke-width 4) paths))
         ]
-      [:svg {:width   (str (* cols 50)) 
-             :height  (str (* rows 50)) 
+      [:svg {:width   "80%"; (str (* cols 50)) 
+             :height  "50%";(str (* rows 50))
+             :viewBox (print-str -50 -50 (str (* (inc  cols) 50)) (str (* (inc  rows) 50)))
          :id    "canvas"
-         :style {:outline          "2px solid black"
+         :style {;:outline          "1px solid black"
                  :background-color "#fff"}}
+       [:rect {:x 0 :y 0 :width (* 50 cols) :height (*  50 rows) :fill "none" :stroke "black" :stroke-width 1}]
        (map (partial draw-arrow app-state) ij)
        (map draw-opt (:optimal-paths (:result app-state)))
        (map (partial draw-mask app-state) ij)
        (map (partial draw-cell app-state) ij)
+       (draw-top-seq app-state)
+       (draw-left-seq app-state)
        ]))
 
 
