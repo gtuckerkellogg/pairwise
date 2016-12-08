@@ -23,10 +23,13 @@
 (defonce app-item-id (atom 0))
 
 (defn app-results [app-state]
+  (let [scoring-matrix (condp = (:scoring-matrix-type app-state)
+                         :simple (sub/simple-substitution-matrix :protein :same (:match-score app-state) :different (:mismatch-score app-state))
+                         :standard (get scoring-matrices (:scoring-matrix app-state)))]
   (linear/pairwise-align (:top-seq app-state)
                          (:bottom-seq app-state)
-                         (get scoring-matrices (:scoring-matrix app-state))
-                         (:gap-penalty app-state) :type (:alignment-type app-state)))
+                         scoring-matrix
+                         (:gap-penalty app-state) :type (:alignment-type app-state))))
 
 (defn draw-arrow [app-state [r c] & {:keys [stroke stroke-width] :or {stroke "gray" stroke-width 2}}]
   (let [x1 (+ 25 (* c 50))
@@ -88,22 +91,22 @@
 
 
 (defn row [label input]
-  [:div.row
-   [:div.col-md-4 [:label label]]
+  [:div.row {:alignment-baseline "bottom"}
+   [:div.col-md-4  [:label  label]]
    [:div.col-md-8 input]])
 
 
-(defn radio [label name value]
+(defn radio [label name value & {:keys [checked] :or {checked false}}]
   [:div.radio
    [:label
-    [:input {:field :radio :name name :value value}]
+    [:input {:field :radio :name name :value value :checked checked}]
     label]])
 
 
 (defn input [label type id]
   (row label [:input.form-control {:field type :id id}]))
 
-(def form-template
+(defn form-template [app-state]
   [:div [:div {:class "panel panel-primary"}
          [:div.panel-heading "Input sequences"]
          [:div.panel-body
@@ -114,32 +117,38 @@
     [:div.panel-body 
 
 
-     (row "scoring matrix type"
-          [:select.form-control {:field :list :id :scoring-matrix-type}
-           [:option {:key :blosum62} "BLOSUM62"]
-           [:option {:key :blosum50} "BLOSUM50"]
-           [:option {:key :pam250} "PAM250"]
-           [:option {:key :pam120} "PAM120"]
-           [:option {:key :pam40} "PAM40"]
-           
-           ]
+     (row "Scoring Matrix"
+          [:span
+           (radio "simple "  :scoring-matrix-type  :simple )
+           (radio "standard" :scoring-matrix-type  :standard :checked true)])
+     
+
+     [:div.form-group {:field :container
+                       :visible? #(= :simple (:scoring-matrix-type %))}
+      (row [:label
+            {:field :label
+             :preamble "match: "
+             :id :match-score}]
+          [:input.form-control
+           {:field :range :min 0 :max 15 :id :match-score}]
           )
+      (row [:label
+            {:field :label
+             :preamble "mismatch: "
+             :id :mismatch-score}]
+          [:input.form-control
+           {:field :range :min -10 :max 0 :id :mismatch-score}]
+          )
+]
 
-
-     #_(keys app-state)
-
-     #_(if (= :standard ))
-
-       
-     (row "Scoring matrix"
-          [:select.form-control {:field :list :id :scoring-matrix}
-           [:option {:key :blosum62} "BLOSUM62"]
-           [:option {:key :blosum50} "BLOSUM50"]
-           [:option {:key :pam250} "PAM250"]
-           [:option {:key :pam120} "PAM120"]
-           [:option {:key :pam40} "PAM40"]
-           
-           ])
+     [:select.form-control {:field :list :id :scoring-matrix :visible? #(= :standard (:scoring-matrix-type %))}
+      [:option {:key :blosum62} "BLOSUM62"]
+      [:option {:key :blosum50} "BLOSUM50"]
+      [:option {:key :pam250} "PAM250"]
+      [:option {:key :pam120} "PAM120"]
+      [:option {:key :pam40} "PAM40"]
+      
+      ]
 
      (row [:label
            {:field :label
@@ -167,14 +176,16 @@
 
 
 (def app-state (atom {:top-seq     "HEAGAWGHEE"
-                   :bottom-seq     "PAWHEAE"
-                   :scoring-matrix :blosum50
-                   :scoring-matrix-type :blosum50
-                   :gap-penalty          8
-                   :sequence-type  :protein
-                   :alignment-type :global
-                   :scoring-matrix-name "BLOSUM50"
-                   }))
+                      :bottom-seq     "PAWHEAE"
+                      :scoring-matrix :blosum50
+                      :scoring-matrix-type :simple
+                      :gap-penalty          8
+                      :sequence-type  :protein
+                      :alignment-type :global
+                      :scoring-matrix-name "BLOSUM50"
+                      :match-score     5
+                      :mismatch-score -3
+                      }))
 
 (defn page []
   (fn []
@@ -184,17 +195,14 @@
      [:div.row
       [:div {:class "col-md-4"}
        [:div.row [bind-fields
-                  form-template
+                  (form-template @app-state)
                   app-state
                   (fn [[id] value {:keys [top-seq
                                            bottom-seq
                                            scoring-matrix
                                            gap-penalty
                                            alignment-type] :as doc}]
-                    (assoc-in doc [:result] (app-results doc)))
-                  #_(fn [[id] value {:keys [scoring-matrix-type] :as doc}]
-                    (assoc doc :scoring-matrix-type id))
-                  ]
+                    (assoc-in doc [:result] (app-results doc)))]
         [:div.row
          (if (:result @app-state)
            [:div {:class "panel panel-info"}
@@ -216,8 +224,8 @@
             ]
            [:div.panel-body
             [:div.row (svg-component @app-state)]]
+           #_[:div (str @app-state) ]
            ])]]
-      [:div (str (:scoring-matrix-type @app-state))]
       ]
 
 
