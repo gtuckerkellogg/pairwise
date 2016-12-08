@@ -55,7 +55,7 @@
     ))
 
 (defn draw-top-seq [app-state]
-  (let [draw-a-letter (fn [i x] [:text {:x (+ 25 (* (inc i) 50)) :y -25 :font-size "150%" :text-anchor "middle" :alignment-baseline "middle"} x])]
+  (let [draw-a-letter (fn [i x]  [:text {:x (+ 25 (* (inc i) 50)) :y -25 :font-size "150%" :text-anchor "middle" :alignment-baseline "middle"} x])]
     (map-indexed draw-a-letter (seq (:top-seq app-state)))))
 
 (defn draw-left-seq [app-state]
@@ -92,6 +92,14 @@
    [:div.col-md-4 [:label label]]
    [:div.col-md-8 input]])
 
+
+(defn radio [label name value]
+  [:div.radio
+   [:label
+    [:input {:field :radio :name name :value value}]
+    label]])
+
+
 (defn input [label type id]
   (row label [:input.form-control {:field type :id id}]))
 
@@ -106,7 +114,24 @@
     [:div.panel-body 
 
 
-     (row "scoring-matrix"
+     (row "scoring matrix type"
+          [:select.form-control {:field :list :id :scoring-matrix-type}
+           [:option {:key :blosum62} "BLOSUM62"]
+           [:option {:key :blosum50} "BLOSUM50"]
+           [:option {:key :pam250} "PAM250"]
+           [:option {:key :pam120} "PAM120"]
+           [:option {:key :pam40} "PAM40"]
+           
+           ]
+          )
+
+
+     #_(keys app-state)
+
+     #_(if (= :standard ))
+
+       
+     (row "Scoring matrix"
           [:select.form-control {:field :list :id :scoring-matrix}
            [:option {:key :blosum62} "BLOSUM62"]
            [:option {:key :blosum50} "BLOSUM50"]
@@ -136,7 +161,7 @@
   ^{:key (swap! app-item-id inc)} [:p top [:br] bottom [:br] [:br]])
 
 (defn summarize-alignment [{:keys [sequence-type alignment-type result]}]
-  [:p (clojure.string/capitalize (name alignment-type)) " "
+  [:span (clojure.string/capitalize (name alignment-type)) " "
    (name sequence-type) " alignment score: "
    [:strong (:score result)]])
 
@@ -144,12 +169,12 @@
 (def app-state (atom {:top-seq     "HEAGAWGHEE"
                    :bottom-seq     "PAWHEAE"
                    :scoring-matrix :blosum50
+                   :scoring-matrix-type :blosum50
                    :gap-penalty          8
                    :sequence-type  :protein
                    :alignment-type :global
                    :scoring-matrix-name "BLOSUM50"
                    }))
-
 
 (defn page []
   (fn []
@@ -161,20 +186,27 @@
        [:div.row [bind-fields
                   form-template
                   app-state
-                  (fn [id value {:keys [top-seq bottom-seq scoring-matrix gap-penalty :alignment-type] :as doc}]
-                    (assoc-in doc [:result] (app-results doc)))]]
-       [:div.row
-        (if (:result @app-state)
-          [:div {:class "panel panel-info"}
-           [:div.panel-heading {:class "text-center"} [:h4 (summarize-alignment @app-state)]]
-           [:div.panel-body
-            [:div.row #_(summarize-alignment @app-state)
-             [:pre  (map display-alignment (:alignments (:result @app-state)))]
+                  (fn [[id] value {:keys [top-seq
+                                           bottom-seq
+                                           scoring-matrix
+                                           gap-penalty
+                                           alignment-type] :as doc}]
+                    (assoc-in doc [:result] (app-results doc)))
+                  #_(fn [[id] value {:keys [scoring-matrix-type] :as doc}]
+                    (assoc doc :scoring-matrix-type id))
+                  ]
+        [:div.row
+         (if (:result @app-state)
+           [:div {:class "panel panel-info"}
+            [:div.panel-heading {:class "text-center"} (summarize-alignment @app-state)]
+            [:div.panel-body
+             [:div.row 
+              [:pre  (map display-alignment (:alignments (:result @app-state)))]
+              ]
              ]
-            ]
-          ])
-        
-        ]]
+            ])
+         
+         ]]]
       [:div {:class "col-md-8"}
        [:div.row
         (if (:result @app-state)
@@ -184,7 +216,9 @@
             ]
            [:div.panel-body
             [:div.row (svg-component @app-state)]]
-           ])]]]
+           ])]]
+      [:div (str (:scoring-matrix-type @app-state))]
+      ]
 
 
 

@@ -1,0 +1,17 @@
+$font-stack:    Helvetica, sans-serif;
+$nus-blue:  #003D7C;  // #003D7C 
+$nus-orange: #EF7C00;  // #EF7C00 
+
+
+.panel-primary  { border-color: $nus-blue; 
+    > .panel-heading { background-image: none; background-color: $nus-blue; border-color: $nus-blue; }
+    > .panel-body { border-color: $nus-orange; }
+    
+}
+
+.panel-info  {
+    border-color: $nus-orange;
+    > .panel-heading { background-image: none; background-color: lighten($nus-orange,20%); color: $nus-blue; } 
+}
+
+
