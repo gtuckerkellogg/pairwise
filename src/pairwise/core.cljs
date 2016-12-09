@@ -137,8 +137,8 @@
      [:div.row 
       [:div.col-md-4 {:vertical-align "middle"} [:label  "Scoring Matrix"]]
       [:div.col-md-8
-       (radio "User-defined"  :scoring-matrix-type  :simple :checked true)
-       (radio "Standard" :scoring-matrix-type  :standard)]]
+       (radio "User-defined"  :scoring-matrix-type  :simple )
+       (radio "Standard" :scoring-matrix-type  :standard :checked true)]]
 
      [:div.form-group {:field :container
                        :visible? #(= :simple (:scoring-matrix-type %))}
