@@ -11,3 +11,4 @@ pom.xml.asc
 .hgignore
 .hg/
 style.css.map
+/figwheel_server.log

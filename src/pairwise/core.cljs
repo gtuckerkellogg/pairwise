@@ -188,10 +188,10 @@
 (def app-state (atom {:top-seq     "HEAGAWGHEE"
                       :bottom-seq     "PAWHEAE"
                       :scoring-matrix :blosum50
-                      :scoring-matrix-type :simple
-                      :gap-penalty          5
+                      :scoring-matrix-type :standard
+                      :gap-penalty          8
                       :sequence-type  :protein
-                      :alignment-type :local
+                      :alignment-type :global
                       :match-score     5
                       :mismatch-score -3
                       }))

@@ -150,10 +150,8 @@
         all-paths (mapcat  #(search [%1] #{%1}) start-cells)
         internal-cells (set (apply concat (map rest all-paths)))
         ]
-    (prn internal-cells)
-    all-paths
+    (filter #((complement contains?) internal-cells (first %)) all-paths)))
 
-    ))
 
 (defn path-to-alignment
   "Take as input a path of nodes and two input sequences. Generate an alignment"
