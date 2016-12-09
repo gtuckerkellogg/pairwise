@@ -116,6 +116,7 @@
                                     (dec (count (first D))) :score])
         (= type :local) (apply max (flatten (map #(map :score %1) D)))))
 
+
 (defn get-starting [D type]
   (cond (= type :global) (list [(dec (count D))
                                 (dec (count (first D)))])
@@ -123,8 +124,7 @@
                                starting  (for [r (range (count D))
                                                c (range (count (first D)))]
                                            (when (= top-score (get-in D [r c :score]))
-                                             [r c]))
-                               ]
+                                             [r c]))]
                            (remove nil? starting))))
 
 (defn dfs
@@ -146,8 +146,13 @@
         start-cells (get-starting D type)
         graph       (graph-of D)
         search      (dfs graph met-goal?)
-        start-cell (first start-cells)]
-    (mapcat  #(search [%1] #{%1}) start-cells)
+        start-cell (first start-cells)
+        all-paths (mapcat  #(search [%1] #{%1}) start-cells)
+        internal-cells (set (apply concat (map rest all-paths)))
+        ]
+    (prn internal-cells)
+    all-paths
+
     ))
 
 (defn path-to-alignment

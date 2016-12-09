@@ -101,13 +101,13 @@
 
 
 (defn row [label input]
-  [:div.row {:alignment-baseline "bottom"}
-   [:div.col-md-4  [:label  label]]
+  [:div.row
+   [:div.col-md-4  [:label label]]
    [:div.col-md-8 input]])
 
 
 (defn radio [label name value & {:keys [checked] :or {checked false}}]
-  [:div.radio
+  [:div
    [:label
     [:input {:field :radio :name name :value value :checked checked}]
     label]])
@@ -122,16 +122,23 @@
          [:div.panel-body
           (input "Top sequence" :text :top-seq)
           (input "Bottom sequence" :text :bottom-seq)]]
+
+   [:div {:class "panel panel-primary"}
+    [:div.panel-heading "Alignment type"]
+    [:div.panel-body
+     [:div.btn-group { :field :single-select :id :alignment-type}
+      [:button.btn.btn-default {:key :global} "Needleman-Wunsch"]
+      [:button.btn.btn-default {:key :local} "Smith-Waterman"]]]]
+   
    [:div {:class "panel panel-primary"}
     [:div.panel-heading "Algorithm Parameters"]
     [:div.panel-body 
 
-
-     (row "Scoring Matrix"
-          [:span
-           (radio "User-defined"  :scoring-matrix-type  :simple )
-           (radio "Standard" :scoring-matrix-type  :standard :checked true)])
-     
+     [:div.row 
+      [:div.col-md-4 {:vertical-align "middle"} [:label  "Scoring Matrix"]]
+      [:div.col-md-8
+       (radio "User-defined"  :scoring-matrix-type  :simple :checked true)
+       (radio "Standard" :scoring-matrix-type  :standard)]]
 
      [:div.form-group {:field :container
                        :visible? #(= :simple (:scoring-matrix-type %))}
@@ -163,7 +170,7 @@
           [:input.form-control
            {:field :range :min 0 :max 15 :id :gap-penalty}]
           )
-     (row "Alignment algorithm" 
+     #_(row "Alignment algorithm" 
           [:div.btn-group {:field :single-select :id :alignment-type}
            [:button.btn.btn-default {:key :global} "Needleman-Wunsch"]
            [:button.btn.btn-default {:key :local} "Smith-Waterman"]])]]])
@@ -182,9 +189,9 @@
                       :bottom-seq     "PAWHEAE"
                       :scoring-matrix :blosum50
                       :scoring-matrix-type :simple
-                      :gap-penalty          8
+                      :gap-penalty          5
                       :sequence-type  :protein
-                      :alignment-type :global
+                      :alignment-type :local
                       :match-score     5
                       :mismatch-score -3
                       }))
