@@ -13,23 +13,33 @@
 ;; define your app data so that it doesn't get over-written on reload
 
 (defonce scoring-matrices {
-                           :blosum62 (sub/scoring-matrix (read-file "resources/data/BLOSUM62.txt")) 
-                           :blosum50 (sub/scoring-matrix (read-file "resources/data/BLOSUM50.txt")) 
-                           :pam250 (sub/scoring-matrix (read-file "resources/data/PAM250.txt")) 
-                           :pam120 (sub/scoring-matrix (read-file "resources/data/PAM120.txt")) 
-                           :pam40 (sub/scoring-matrix (read-file "resources/data/PAM40.txt")) 
+                           :blosum62 {:name "BLOSUM62"
+                                      :matrix (sub/scoring-matrix (read-file "resources/data/BLOSUM62.txt"))} 
+                           :blosum50 {:name "BLOSUM50"
+                                      :matrix (sub/scoring-matrix (read-file "resources/data/BLOSUM50.txt"))} 
+                           :pam250 {:name "PAM250"
+                                    :matrix (sub/scoring-matrix (read-file "resources/data/PAM250.txt"))} 
+                           :pam120 {:name "PAM120"
+                                    :matrix (sub/scoring-matrix (read-file "resources/data/PAM120.txt"))} 
+                           :pam40 {:name "PAM40"
+                                   :matrix (sub/scoring-matrix (read-file "resources/data/PAM40.txt")) 
+                                   }
                            })
 
 (defonce app-item-id (atom 0))
 
 (defn app-results [app-state]
   (let [scoring-matrix (condp = (:scoring-matrix-type app-state)
-                         :simple (sub/simple-substitution-matrix :protein :same (:match-score app-state) :different (:mismatch-score app-state))
-                         :standard (get scoring-matrices (:scoring-matrix app-state)))]
+                         :simple (sub/simple-substitution-matrix
+                                  :protein
+                                  :same (:match-score app-state)
+                                  :different (:mismatch-score app-state))
+                         :standard (get-in scoring-matrices [(:scoring-matrix app-state) :matrix]))]
   (linear/pairwise-align (:top-seq app-state)
                          (:bottom-seq app-state)
                          scoring-matrix
-                         (:gap-penalty app-state) :type (:alignment-type app-state))))
+                         (:gap-penalty app-state)
+                         :type (:alignment-type app-state))))
 
 (defn draw-arrow [app-state [r c] & {:keys [stroke stroke-width] :or {stroke "gray" stroke-width 2}}]
   (let [x1 (+ 25 (* c 50))
@@ -106,7 +116,7 @@
 (defn input [label type id]
   (row label [:input.form-control {:field type :id id}]))
 
-(defn form-template [app-state]
+(def form-template
   [:div [:div {:class "panel panel-primary"}
          [:div.panel-heading "Input sequences"]
          [:div.panel-body
@@ -119,8 +129,8 @@
 
      (row "Scoring Matrix"
           [:span
-           (radio "simple "  :scoring-matrix-type  :simple )
-           (radio "standard" :scoring-matrix-type  :standard :checked true)])
+           (radio "User-defined"  :scoring-matrix-type  :simple )
+           (radio "Standard" :scoring-matrix-type  :standard :checked true)])
      
 
      [:div.form-group {:field :container
@@ -138,17 +148,12 @@
              :id :mismatch-score}]
           [:input.form-control
            {:field :range :min -10 :max 0 :id :mismatch-score}]
-          )
-]
+          )]
 
-     [:select.form-control {:field :list :id :scoring-matrix :visible? #(= :standard (:scoring-matrix-type %))}
-      [:option {:key :blosum62} "BLOSUM62"]
-      [:option {:key :blosum50} "BLOSUM50"]
-      [:option {:key :pam250} "PAM250"]
-      [:option {:key :pam120} "PAM120"]
-      [:option {:key :pam40} "PAM40"]
-      
-      ]
+     [:select.form-control {:field :list
+                            :id :scoring-matrix
+                            :visible? #(= :standard (:scoring-matrix-type %))}
+      (map (fn [[k v]] [:option {:key k} (:name v)]) scoring-matrices)]
 
      (row [:label
            {:field :label
@@ -162,8 +167,6 @@
           [:div.btn-group {:field :single-select :id :alignment-type}
            [:button.btn.btn-default {:key :global} "Needleman-Wunsch"]
            [:button.btn.btn-default {:key :local} "Smith-Waterman"]])]]])
-
-
 
 
 (defn display-alignment [{:keys [top bottom]}]
@@ -182,7 +185,6 @@
                       :gap-penalty          8
                       :sequence-type  :protein
                       :alignment-type :global
-                      :scoring-matrix-name "BLOSUM50"
                       :match-score     5
                       :mismatch-score -3
                       }))
@@ -195,7 +197,7 @@
      [:div.row
       [:div {:class "col-md-4"}
        [:div.row [bind-fields
-                  (form-template @app-state)
+                  form-template
                   app-state
                   (fn [[id] value {:keys [top-seq
                                            bottom-seq
@@ -224,8 +226,7 @@
             ]
            [:div.panel-body
             [:div.row (svg-component @app-state)]]
-           #_[:div (str @app-state) ]
-           ])]]
+])]]
       ]
 
 
