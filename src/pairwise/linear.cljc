@@ -16,18 +16,18 @@
   [s]
   (and (map? s) (number? (:score s))))
 
+
 (defn score-match
   "return the score for a match condition"
-  [D row col s]
-  (let [from-cell  [(dec row) (dec col)]
-        from-score (get-in D (conj from-cell :score))]
+  [D i j s]
+  (let [[i' j'] [(dec i) (dec j)]]
     (cond
-      (and (zero? row) (zero? col)) {:score 0 :from nil}
-      (or (zero? row) (zero? col))  {:score nil :from nil}
-      :else                         {:score (+  from-score s)
-                                     :from  from-cell
-                                     :step  :diag
-                                     })))
+      (and (zero? i) (zero? j)) {:score 0 :from nil}
+      (or (zero? i) (zero? j))  {:score nil :from nil}
+      :else {
+             :score (+ (get-in D [i' j' :score]) s)
+             :from  [i' j']
+             :step  :diag})))
 
 (defn score-vertical-gap
     "return the score for a vertical gap condition with gap penalty d"

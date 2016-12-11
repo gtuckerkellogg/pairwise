@@ -185,63 +185,63 @@
    [:strong (:score result)]])
 
 
-(def app-state (atom {:top-seq     "HEAGAWGHEE"
-                      :bottom-seq     "PAWHEAE"
-                      :scoring-matrix :blosum50
-                      :scoring-matrix-type :standard
-                      :gap-penalty          8
-                      :sequence-type  :protein
-                      :alignment-type :global
-                      :match-score     5
-                      :mismatch-score -3
-                      }))
-
 (defn page []
-  (fn []
-    [:div
-     [:div.page-header [:h1.text-center "Optimal pairwise sequence alignment" ] ]
-     
-     [:div.row
-      [:div {:class "col-md-4"}
-       [:div.row [bind-fields
-                  form-template
-                  app-state
-                  (fn [[id] value {:keys [top-seq
-                                           bottom-seq
-                                           scoring-matrix
-                                           gap-penalty
-                                           alignment-type] :as doc}]
-                    (assoc-in doc [:result] (app-results doc)))]
-        [:div.row
-         (if (:result @app-state)
-           [:div {:class "panel panel-info"}
-            [:div.panel-heading {:class "text-center"} (summarize-alignment @app-state)]
-            [:div.panel-body
-             [:div.row 
-              [:pre  (map display-alignment (:alignments (:result @app-state)))]
-              ]
-             ]
-            ])
-         
-         ]]]
-      [:div {:class "col-md-8"}
+  (let [app-state (atom {:top-seq     "HEAGAWGHEE"
+                         :bottom-seq     "PAWHEAE"
+                         :scoring-matrix :blosum50
+                         :scoring-matrix-type :standard
+                         :gap-penalty          8
+                         :sequence-type  :protein
+                         :alignment-type :global
+                         :match-score     5
+                         :mismatch-score -3
+                         })]
+    (fn []
+      [:div
+       [:div.page-header [:h1.text-center "Optimal pairwise sequence alignment" ] ]
+       
        [:div.row
-        (if (:result @app-state)
-          [:div {:class "text-center" :margin-left "5%"}
-           [:div.panel-heading [:h3 "Dynamic programming matrix visualisation"]
-            "Paths for optimal alignments are indicated in red"
-            ]
-           [:div.panel-body
-            [:div.row (svg-component @app-state)]]
-])]]
-      ]
+        [:div {:class "col-md-4"}
+         [:div.row [bind-fields
+                    form-template
+                    app-state
+                    (fn [[id] value {:keys [top-seq
+                                            bottom-seq
+                                            scoring-matrix
+                                            gap-penalty
+                                            alignment-type] :as doc}]
+                      (assoc-in doc [:result] (app-results doc)))]
+          [:div.row
+           (if (:result @app-state)
+             [:div {:class "panel panel-info"}
+              [:div.panel-heading {:class "text-center"} (summarize-alignment @app-state)]
+              [:div.panel-body
+               [:div.row 
+                [:pre  (map display-alignment (:alignments (:result @app-state)))]
+                ]
+               ]
+              ])
+           
+           ]]]
+        [:div {:class "col-md-8"}
+         [:div.row
+          (if (:result @app-state)
+            [:div {:class "text-center" :margin-left "5%"}
+             [:div.panel-heading [:h3 "Dynamic programming matrix visualisation"]
+              "Paths for optimal alignments are indicated in red"
+              ]
+             [:div.panel-body
+              [:div.row (svg-component @app-state)]]
+             ])]]
+        ]
 
 
 
-     ]))
+       ])))
 
 (reagent/render-component [page]
                           (. js/document (getElementById "app")))
 
 (defn on-js-reload []
-  (swap! app-state update-in [:__figwheel_counter] inc))
+  (swap! ;app-state
+         update-in [:__figwheel_counter] inc))
