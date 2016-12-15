@@ -3,10 +3,7 @@
             [reagent-forms.core :refer [bind-fields init-field value-of]]
             [pairwise.linear :as linear]
             [pairwise.substitution :as sub]
-            ;[pairwise.cljsmacros :include-macros true :refer [read-file]]
-            )
-  (:require-macros [pairwise.cljsmacros :refer [read-file]])
-  (:refer-clojure))
+            [pairwise.cljsmacros  :refer-macros [read-file]]))
 
 (enable-console-print!)
 

@@ -104,7 +104,7 @@
     )
   )
 
-(let [S  (scoring-matrix "resources/data/BLOSUM50.txt")
+(let [S  (scoring-matrix (slurp "resources/data/BLOSUM50.txt"))
       s1 "HEAGAWGHEE"
       s2 "PAWHEE"
       d 8
