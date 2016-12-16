@@ -36,11 +36,7 @@
       s2 "CATTCG"
       d 3
       ]
-  S
-;  (get-in S [[\A \A]])
- 
-  
-  )
+  S)
 
 (let [S  (s/scoring-matrix (slurp "resources/data/BLOSUM50.txt"))
       s1 "HEAGAWGHEE"

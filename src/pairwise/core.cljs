@@ -115,10 +115,19 @@
 
 (def form-template
   [:div [:div {:class "panel panel-primary"}
-         [:div.panel-heading "Input sequences"]
+         [:div.panel-heading "Input sequences (up to 10 letters)"]
          [:div.panel-body
-          (input "Top sequence" :text :top-seq)
-          (input "Bottom sequence" :text :bottom-seq)]]
+          (row "TOP sequence"
+               [:input.form-control {:field :text
+                                     :id :top-seq
+                                     :max-length 10
+                                     }])
+
+          (row "BOTTOM sequence"
+               [:input.form-control {:field :text
+                                     :id :bottom-seq
+                                     :max-length 10
+                                     }])]]
 
    [:div {:class "panel panel-primary"}
     [:div.panel-heading "Alignment type"]
