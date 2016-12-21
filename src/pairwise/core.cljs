@@ -211,7 +211,10 @@
          [:div.row [bind-fields
                     form-template
                     app-state
-                    (fn [[id] value {:keys [top-seq
+                    #_(fn [id value {:keys [top-seq]}]
+                      (if (re-matches #"^[ABCDEFGHIKLMNPQRSTVWXYZ]+$" top-seq)
+                        doc))
+                    (fn [[id] value {:keys [
                                             bottom-seq
                                             scoring-matrix
                                             gap-penalty

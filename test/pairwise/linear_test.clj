@@ -3,19 +3,31 @@
             [pairwise.linear :refer :all]
             [clojure.string :as str]
             [clojure.walk :as w]
-            [pairwise.substitution :as s]))
+            [clojure.spec :as s]
+            [clojure.spec.gen :as gen]
+            [pairwise.substitution :as sub]))
+
+
+(gen/sample (s/gen :pairwise.linear/dna-input) 30)
+
+
+
+ 
+
+
+
 
 
 (def s1 "CC")
 (def s2 "CCA")
 (let [D (initialise-D s1 s2)
-      S (s/simple-substitution-matrix :dna )
+      S (sub/simple-substitution-matrix :dna )
       gap-penalty 1]
   (build-dp-matrix S gap-penalty s1 s2 :type :local))
 
 
 
-(let [S            (s/simple-substitution-matrix :protein :same 5 :different -3)
+(let [S            (sub/simple-substitution-matrix :protein :same 5 :different -3)
       s1           "PPPPSIMIL"
       s2           "SIMMILL"
       gap-penalty  3
@@ -31,14 +43,14 @@
 
 
 
-(let [S  (s/simple-substitution-matrix :protein :same 5 :different -2)
+(let [S  (sub/simple-substitution-matrix :protein :same 5 :different -2)
       s1 "GACCAG"
       s2 "CATTCG"
       d 3
       ]
   S)
 
-(let [S  (s/scoring-matrix (slurp "resources/data/BLOSUM50.txt"))
+(let [S  (sub/scoring-matrix (slurp "resources/data/BLOSUM50.txt"))
       s1 "HEAGAWGHEE"
       s2 "PAWHEAE"
       d 8

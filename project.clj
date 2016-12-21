@@ -3,7 +3,12 @@
   :url "http://example.com/FIXME"
   :license {:name "FIX ME"
             :url  ""}
-  :dependencies [[org.clojure/clojure "1.8.0"]
+  :profiles {
+             :dev {:dependencies [[org.clojure/test.check "0.9.0"]]}
+             }
+  :dependencies [;[org.clojure/clojure "1.8.0"]
+                 [org.clojure/clojure "1.9.0-alpha14"]
+                 
                  [org.clojure/clojurescript "1.9.229"]
                  [org.clojure/core.async "0.2.391"
                   :exclusions [org.clojure/tools.reader]]
@@ -12,9 +17,7 @@
                  [hiccup "1.0.5"]
                  [reagent "0.6.0"]
                  [selmer "1.10.1"]
-                 [reagent-forms "0.5.28"]
-
-                 ]
+                 [reagent-forms "0.5.28"]]
 
   :plugins [[lein-figwheel "0.5.8"]
             [lein-cljsbuild "1.1.4" :exclusions [[org.clojure/clojure]]]]

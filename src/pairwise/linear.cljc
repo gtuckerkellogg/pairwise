@@ -1,4 +1,5 @@
-(ns pairwise.linear)
+(ns pairwise.linear
+  (:require [clojure.spec :as s]))
 
 (defn initialise-D
   "Initial a dynamic programming matrix, given two sequences s1 and s2"
@@ -11,11 +12,16 @@
                                          }))))]
     (assoc-in D [0 0 :score] 0)))
 
+(s/fdef initialise-D
+        :args (s/cat :top :pairwise.spec/bioseq-input :bottom :pairwise.spec/bioseq-input))
+
 (defn has-score? 
   "predicate for score"
   [s]
   (and (map? s) (number? (:score s))))
 
+(s/fdef has-score?
+        :ret boolean?)
 
 (defn score-match
   "return the score for a match condition"
@@ -175,8 +181,7 @@
   [s1 s2 S gap-penalty & {:keys [type] :or {type :global}} ]
   (let [D            (initialise-D s1 s2)
         D            (build-dp-matrix S gap-penalty s1 s2 :type type)
-        paths        (findpaths D type)
-        ]
+        paths        (findpaths D type)]
     {:score          (alignment-score D type)
      :rows (count (seq s2))
      :cols (count (seq s1))
@@ -188,5 +193,4 @@
      :scoring-matrix S
      :gap-penalty    gap-penalty
      }))
-
 
