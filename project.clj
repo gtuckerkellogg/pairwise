@@ -4,13 +4,12 @@
   :license {:name "FIX ME"
             :url  ""}
   :profiles {
-             :dev {:dependencies [[org.clojure/test.check "0.9.0"]]}
+             :dev {:dependencies [[org.clojure/test.check "0.10.0-alpha2"]]}
              }
-  :dependencies [;[org.clojure/clojure "1.8.0"]
-                 [org.clojure/clojure "1.9.0-alpha14"]
-                 
-                 [org.clojure/clojurescript "1.9.229"]
-                 [org.clojure/core.async "0.2.391"
+  :dependencies [
+                 [org.clojure/clojure "1.9.0"]
+                 [org.clojure/clojurescript "1.9.946"]
+                 [org.clojure/core.async "0.3.465"
                   :exclusions [org.clojure/tools.reader]]
                  [cljsjs/bootstrap "3.3.6-1"]
                  [binaryage/devtools "0.8.3"]
@@ -19,8 +18,8 @@
                  [selmer "1.10.1"]
                  [reagent-forms "0.5.28"]]
 
-  :plugins [[lein-figwheel "0.5.8"]
-            [lein-cljsbuild "1.1.4" :exclusions [[org.clojure/clojure]]]]
+  :plugins [[lein-figwheel "0.5.14"]
+            [lein-cljsbuild "1.1.7" :exclusions [[org.clojure/clojure]]]]
 
   :source-paths ["src"]
 
@@ -33,6 +32,7 @@
                 ;; the presence of a :figwheel configuration here
                 ;; will cause figwheel to inject the figwheel client
                 ;; into your build
+
                 :figwheel {:on-jsload "pairwise.core/on-js-reload"
                            ;; :open-urls will pop open your application
                            ;; in the default browser once Figwheel has

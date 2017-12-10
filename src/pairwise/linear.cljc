@@ -1,5 +1,5 @@
 (ns pairwise.linear
-  (:require [clojure.spec :as s]))
+  (:require [clojure.spec.alpha :as s]))
 
 (defn initialise-D
   "Initial a dynamic programming matrix, given two sequences s1 and s2"
