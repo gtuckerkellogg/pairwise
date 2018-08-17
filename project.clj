@@ -18,7 +18,7 @@
                  [selmer "1.10.1"]
                  [reagent-forms "0.5.28"]]
 
-  :plugins [[lein-figwheel "0.5.14"]
+  :plugins [[lein-figwheel "0.5.15"]
             [lein-cljsbuild "1.1.7" :exclusions [[org.clojure/clojure]]]]
 
   :source-paths ["src"]
