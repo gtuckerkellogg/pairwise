@@ -119,27 +119,17 @@
                [:input.form-control {:field :text
                                      :id :top-seq
                                      :max-length 10
-                                     :in-fn (fn [seq] (clojure.string/replace
-                                                        (clojure.string/upper-case seq)
-                                                        #"[JOU]" "X"
-                                      ))
-                                     :out-fn (fn [seq] (clojure.string/replace
-                                                        (clojure.string/upper-case seq)
-                                                        #"[JOU]" "X"
-                                      ))}])
+                                     :in-fn sub/sanitise
+                                     :out-fn sub/sanitise
+                                      }])
 
           (row "BOTTOM sequence"
                [:input.form-control {:field :text
                                      :id :bottom-seq
                                      :max-length 10
-                                     :in-fn (fn [seq] (clojure.string/replace
-                                                        (clojure.string/upper-case seq)
-                                                        #"[JOU]" "X"
-                                      ))
-                                     :out-fn (fn [seq] (clojure.string/replace
-                                                        (clojure.string/upper-case seq)
-                                                        #"[JOU]" "X"
-                                      ))}])]]
+                                     :in-fn sub/sanitise
+                                     :out-fn sub/sanitise
+                                      }])]]
 
    [:div {:class "panel panel-primary"}
     [:div.panel-heading "Alignment type"]
