@@ -36,6 +36,4 @@
 (defn sanitise
   "Transforms given sequence to one with only valid letters"
   [input-seq]
-  (clojure.string/replace (clojure.string/upper-case input-seq)
-                          #"[^ACGTRNDQEHILKMFPSWYVBZX]"
-                          "X"))
+  (clojure.string/replace (clojure.string/upper-case input-seq) #"[^ACGTRNDQEHILKMFPSWYVBZX]" "X"))
