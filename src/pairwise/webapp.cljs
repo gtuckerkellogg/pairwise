@@ -1,4 +1,4 @@
-(ns pairwise.core
+(ns pairwise.webapp
   (:require [reagent.core :as reagent :refer (atom)]
             [reagent-forms.core :refer [bind-fields init-field value-of]]
             [pairwise.linear :as linear]
@@ -7,19 +7,17 @@
 
 (enable-console-print!)
 
-;; define your app data so that it doesn't get over-written on reload
-
 (defonce scoring-matrices {
                            :blosum62 {:name "BLOSUM62"
-                                      :matrix (sub/scoring-matrix (read-file "resources/data/BLOSUM62.txt"))} 
+                                      :matrix (sub/read-scoring-matrix (read-file "resources/data/BLOSUM62.txt"))} 
                            :blosum50 {:name "BLOSUM50"
-                                      :matrix (sub/scoring-matrix (read-file "resources/data/BLOSUM50.txt"))} 
+                                      :matrix (sub/read-scoring-matrix (read-file "resources/data/BLOSUM50.txt"))} 
                            :pam250 {:name "PAM250"
-                                    :matrix (sub/scoring-matrix (read-file "resources/data/PAM250.txt"))} 
+                                    :matrix (sub/read-scoring-matrix (read-file "resources/data/PAM250.txt"))} 
                            :pam120 {:name "PAM120"
-                                    :matrix (sub/scoring-matrix (read-file "resources/data/PAM120.txt"))} 
+                                    :matrix (sub/read-scoring-matrix (read-file "resources/data/PAM120.txt"))} 
                            :pam40 {:name "PAM40"
-                                   :matrix (sub/scoring-matrix (read-file "resources/data/PAM40.txt")) 
+                                   :matrix (sub/read-scoring-matrix (read-file "resources/data/PAM40.txt")) 
                                    }
                            })
 

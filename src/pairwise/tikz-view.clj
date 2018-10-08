@@ -22,8 +22,8 @@
 (defn draw-grid [s1 s2]
   (let [M (inc (count s1))
         N (inc (count s2))]
-    ["\\pgftransformrotate{-90};"
-     (format "\\path [use as bounding box] (-1.5,-1) rectangle (%d,%d);\n" (inc N) (inc M))
+    ["\\pgftransformrotate{-90};\n"
+;;     (format "\\path [use as bounding box] (-1.5,-1) rectangle (%d,%d);\n" (inc N) (inc M))
      (format "\\draw [xshift=-0.5cm,yshift=-0.5cm,color=lightgray] (0,0) grid (%d,%d);\n" N M)
      (map str (map-indexed #(format "\\draw (-1,%s) node [scale=1] {%s};\n" (inc %1) %2) (seq s1)))
      (map str (map-indexed #(format "\\draw (%s,-1) node [scale=1] {%s};\n" (inc %1) %2) (seq s2)))]
@@ -31,9 +31,10 @@
 
 
 (defn latex-env [env s]
-  (vector (format "\\begin{%s}\n" (name env))
+  (vector (format "\n\\begin{%s}\n" (name env))
           s
-          (format "\\end{%s}\n" (name env))))
+          (format "\n\\end{%s}\n" (name env))))
+
 
 (defn latex-command [cmd args s]
   (vector (if args
@@ -41,6 +42,9 @@
             (format "}" (name cmd))) 
           s
           "}"))
+
+
+
 
 
 (defn- draw-score [D ij]
@@ -94,20 +98,27 @@
                            ])
         ]
     (spit outfile header)
-                                        ;(map spitout (flatten content))
-                                        ;    (spitout footer)
     (map spitout  (flatten (->> (flatten content)
                                 (latex-env :tikzpicture)
-;                                (latex-command :resizebox "{!}{6in}")
+                                (latex-command :resizebox "{!}{6in}")
                                 (latex-env :standaloneframe)
                                 (latex-env :document))))
+    (spitout footer)
     )
-  )
+)
 
-(let [S  (scoring-matrix (slurp "resources/data/BLOSUM50.txt"))
+(let [S  (read-scoring-matrix (slurp "resources/data/BLOSUM50.txt"))
       s1 "HEAGAWGHEE"
       s2 "PAWHEE"
       d 8
       result (pairwise/pairwise-align s1 s2 S d :type :global)]
-  (tikz-alignment result "resources/tikz/out.tex")
+   (tikz-alignment result "resources/tikz/out.tex")
+  )
+
+(let [S  (read-scoring-matrix (slurp "resources/data/BLOSUM50.txt"))
+      s1 "HEAGAWGHEE"
+      s2 "PAWHEE"
+      d 8
+      ]
+  (:alignments (pairwise/pairwise-align s1 s2 S d :type :global))
   )

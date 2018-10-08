@@ -1,5 +1,4 @@
-(ns pairwise.linear
-  (:require [clojure.spec :as s]))
+(ns pairwise.linear)
 
 (defn initialise-D
   "Initial a dynamic programming matrix, given two sequences s1 and s2"
@@ -12,15 +11,15 @@
                                          }))))]
     (assoc-in D [0 0 :score] 0)))
 
-(s/fdef initialise-D
-        :args (s/cat :top :pairwise.spec/bioseq-input :bottom :pairwise.spec/bioseq-input))
+;;(s/fdef initialise-D
+;;        :args (s/cat :top :pairwise.spec/bioseq-input :bottom :pairwise.spec/bioseq-input))
 
 (defn has-score? 
   "predicate for score"
   [s]
   (and (map? s) (number? (:score s))))
 
-(s/fdef has-score?
+#_(s/fdef has-score?
         :ret boolean?)
 
 (defn score-match
@@ -193,4 +192,5 @@
      :scoring-matrix S
      :gap-penalty    gap-penalty
      }))
+
 

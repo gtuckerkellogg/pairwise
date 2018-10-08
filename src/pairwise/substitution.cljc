@@ -1,7 +1,7 @@
 (ns pairwise.substitution
   (:require [clojure.string :as str]
             #?(:cljs [cljs.reader :refer [read-string]])
-            #?(:cljs  [pairwise.cljsmacros :include-macros true :refer [read-file]])
+            ;#?(:cljs  [pairwise.cljsmacros :include-macros true :refer [read-file]])
             )) 
 
 
@@ -19,7 +19,7 @@
                                  )))))
 
 
-(defn scoring-matrix "This gets a substitution matrix from a file"
+(defn read-scoring-matrix "This gets a substitution matrix from a file"
   [contents]
   (let [contents (str/split-lines contents)
         contents (filter  #(not (re-find #"#" %1 )) contents)

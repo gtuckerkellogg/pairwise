@@ -1,25 +1,23 @@
 (defproject pairwise "0.1.0-SNAPSHOT"
   :description "Pairwise alignment using Smith-Waterman and Needleman Wunsch"
-  :url "http://example.com/FIXME"
-  :license {:name "FIX ME"
-            :url  ""}
+  :url "https://github.com/gtuckerkellogg/pairwise"
+  :license {:name "MIT"
+            :url  "https://opensource.org/licenses/MIT"}
   :profiles {
              :dev {:dependencies [[org.clojure/test.check "0.9.0"]]}
              }
-  :dependencies [;[org.clojure/clojure "1.8.0"]
-                 [org.clojure/clojure "1.9.0-alpha14"]
-                 
-                 [org.clojure/clojurescript "1.9.229"]
-                 [org.clojure/core.async "0.2.391"
+  :dependencies [[org.clojure/clojure  "1.10.0-alpha8"]
+                 [org.clojure/clojurescript "1.9.946"]
+                 [org.clojure/core.async  "0.4.474"
                   :exclusions [org.clojure/tools.reader]]
                  [cljsjs/bootstrap "3.3.6-1"]
                  [binaryage/devtools "0.8.3"]
                  [hiccup "1.0.5"]
-                 [reagent "0.6.0"]
+                 [reagent "0.8.1"]
                  [selmer "1.10.1"]
                  [reagent-forms "0.5.28"]]
 
-  :plugins [[lein-figwheel "0.5.8"]
+  :plugins [[lein-figwheel "0.5.16"]
             [lein-cljsbuild "1.1.4" :exclusions [[org.clojure/clojure]]]]
 
   :source-paths ["src"]
@@ -33,14 +31,14 @@
                 ;; the presence of a :figwheel configuration here
                 ;; will cause figwheel to inject the figwheel client
                 ;; into your build
-                :figwheel {:on-jsload "pairwise.core/on-js-reload"
+                :figwheel {:on-jsload "pairwise.webapp/on-js-reload"
                            ;; :open-urls will pop open your application
                            ;; in the default browser once Figwheel has
                            ;; started and complied your application.
                            ;; Comment this out once it no longer serves you.
                            :open-urls ["http://localhost:3449/index.html"]}
 
-                :compiler {:main                 pairwise.core
+                :compiler {:main                 pairwise.webapp
                            :asset-path           "js/compiled/out"
                            :output-to            "resources/public/js/compiled/pairwise.js"
                            :output-dir           "resources/public/js/compiled/out"
@@ -55,14 +53,14 @@
                {:id           "min"
                 :source-paths ["src"]
                 :compiler     {:output-to     "resources/public/js/compiled/pairwise.js"
-                               :main          pairwise.core
+                               :main          pairwise.webapp
                                :optimizations :advanced
                                :pretty-print  false}}
                {:id           "demo"
                 :source-paths ["src"]
                 :compiler     {:output-to     "demo/js/compiled/pairwise.js"
                                :output-dir    "demo/js/compiled/out"
-                               :main          pairwise.core
+                               :main          pairwise.webapp
                                :optimizations :advanced
                                :pretty-print  false}}
 
