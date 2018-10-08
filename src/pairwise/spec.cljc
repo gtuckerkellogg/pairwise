@@ -1,6 +1,6 @@
 (ns pairwise.spec
-  #_(:require [clojure.spec.alpha :as s]
-            [clojure.spec.gen.alpha :as gen]))
+  (:require [clojure.spec :as s]
+            [clojure.spec.gen :as gen]))
 
 ;; (def dna-letters "ACGT")
 ;; (def dna-regex #"^[ACGT]+$")

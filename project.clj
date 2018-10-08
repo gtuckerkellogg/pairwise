@@ -4,9 +4,10 @@
   :license {:name "MIT"
             :url  "https://opensource.org/licenses/MIT"}
   :profiles {
-             :dev {:dependencies [[org.clojure/test.check "0.9.0"]]}
+             :dev {:dependencies [[org.clojure/test.check "0.10.0-alpha2"]]}
              }
-  :dependencies [[org.clojure/clojure  "1.10.0-alpha8"]
+  :dependencies [
+                 [org.clojure/clojure "1.9.0"]
                  [org.clojure/clojurescript "1.9.946"]
                  [org.clojure/core.async  "0.4.474"
                   :exclusions [org.clojure/tools.reader]]
