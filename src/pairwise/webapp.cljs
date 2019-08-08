@@ -119,12 +119,16 @@
                [:input.form-control {:field :text
                                      :id :top-seq
                                      :max-length 10
+                                     :in-fn sub/sanitise
+                                     :out-fn sub/sanitise
                                      }])
 
           (row "BOTTOM sequence"
                [:input.form-control {:field :text
                                      :id :bottom-seq
                                      :max-length 10
+                                     :in-fn sub/sanitise
+                                     :out-fn sub/sanitise
                                      }])]]
 
    [:div {:class "panel panel-primary"}

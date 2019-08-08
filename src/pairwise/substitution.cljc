@@ -5,7 +5,7 @@
             )) 
 
 
-(defn simple-substitution-matrix 
+(defn simple-substitution-matrix
   "Create a simple substitution matrix instead of a full substitution matrix"
   [seq-type & {:keys [same different] :or {same 1 different -2}}]
   (let [s (cond (= seq-type :dna) "ACGT"
@@ -18,8 +18,8 @@
                                  [s1 s2]
                                  )))))
 
-
-(defn read-scoring-matrix "This gets a substitution matrix from a file"
+(defn read-scoring-matrix
+  "This gets a substitution matrix from a file"
   [contents]
   (let [contents (str/split-lines contents)
         contents (filter  #(not (re-find #"#" %1 )) contents)
@@ -33,5 +33,7 @@
                                ))]
     (into {} (map scoremap matrix))))
 
-
-
+(defn sanitise
+  "Transforms given sequence to one with only valid letters"
+  [input-seq]
+  (clojure.string/replace (clojure.string/upper-case input-seq) #"[^ACGTRNDQEHILKMFPSWYVBZX]" "X"))
