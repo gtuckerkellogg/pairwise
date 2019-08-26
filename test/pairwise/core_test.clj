@@ -1,6 +1,6 @@
 (ns pairwise.core-test
   (:require [clojure.test :refer :all]
-            [pairwise.core :refer :all]
+            [pairwise.linear :refer :all]
             [pairwise.substitution :refer :all]))
 
 

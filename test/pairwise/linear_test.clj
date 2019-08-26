@@ -3,18 +3,12 @@
             [pairwise.linear :refer :all]
             [clojure.string :as str]
             [clojure.walk :as w]
-            [clojure.spec :as s]
-            [clojure.spec.gen :as gen]
+            ;;            [clojure.spec.alpha :as s]
+            ;;            [clojure.spec.gen.alpha :as gen]
             [pairwise.substitution :as sub]))
 
 
-(gen/sample (s/gen :pairwise.linear/dna-input) 30)
-
-
-
- 
-
-
+#_(gen/sample (s/gen :pairwise.linear/dna-input) 30)
 
 
 
@@ -38,8 +32,7 @@
        first
        str/join
        println
-       )
-  )
+       ))
 
 
 
@@ -50,10 +43,21 @@
       ]
   S)
 
-(let [S  (sub/scoring-matrix (slurp "resources/data/BLOSUM50.txt"))
+(let [S  (sub/read-scoring-matrix (slurp "resources/data/BLOSUM50.txt"))
       s1 "HEAGAWGHEE"
       s2 "PAWHEAE"
       d 8
       ]
   (:alignments (pairwise-align s1 s2 S d :type :global))
- ) 
+)
+
+
+(let [S  (sub/read-scoring-matrix (slurp "resources/data/BLOSUM50.txt"))
+      s1 "HEAGAWGHEE"
+      s2 "PAWHEAE"
+      d 8
+      ]
+  (pairwise-align s1 s2 S d :type :global)
+)
+
+

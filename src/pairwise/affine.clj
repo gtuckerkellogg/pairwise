@@ -1,14 +1,15 @@
 (ns pairwise.affine
   (:require   [pairwise.substitution :refer :all]))
 
+
 (defn initialise-D
   "the initial dynamic programming matrix"
   [n m] (let [D (vec (repeat
                       (inc n) (vec (repeat (inc m) {
                                                     :V'M nil
                                                     :V'X nil
-                                                    :V'Y nil
-                                                    }))))]
+                                                    :V'Y nil}))))]
+                                                    
           (assoc-in D [0 0 :V'M] 0)))
 
 (defn score-M "
@@ -26,23 +27,27 @@
         (+ (first (min  (remove nil? 
                               [(get-in D [(max 0 (dec i)) (max 0 (dec j)) :V'M])
                                (get-in D [(max 0 (dec i)) (max 0 (dec j)) :V'X])
-                               (get-in D [(max 0 (dec i)) (max 0 (dec j)) :V'Y])])
-                        ))
-           s )))))
+                               (get-in D [(max 0 (dec i)) (max 0 (dec j)) :V'Y])]))))))))
+                        
+           
 
+ 
+
+ 
+ 
 
 (defn score-X "
   This is the V^X recurrence relationship in equation 7.8 on the top of p 183 of Durbin et al
 "
   [D d e i j]
-  (when-not (and (zero? i) (zero? j))
+  (when-not (and (zero? i) (zero? j)))
   (let [i' (max 0 (dec i))]
       (first (min (remove nil?
                       [(when-not (nil? (get-in D [i' j :V'M]))
                          (- (get-in D [i' j :V'M]) d))
                        (when-not (nil? (get-in D [i' j :V'X]))
-                         (- (get-in D [i' j :V'X]) e))])))
-    )))
+                         (- (get-in D [i' j :V'X]) e))])))))
+    
 
 (defn score-Y "
   This is the V^Y recurrence relationship in equation 7.8 on the top of p 183 of Durbin et al
@@ -54,8 +59,8 @@
                       [(when-not (nil? (get-in D [i j' :V'M]))
                          (- (get-in D [i j' :V'M]) d))
                        (when-not (nil? (get-in D [i j' :V'Y]))
-                         (- (get-in D [i j' :V'Y]) e))])))
-    )))
+                         (- (get-in D [i j' :V'Y]) e))]))))))
+    
 
 
 (defn score-one
