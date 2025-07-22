@@ -1,0 +1,19 @@
+{
+  "name": "pairwise",
+  "version": "0.1.0",
+  "description": "Pairwise alignment using Smith-Waterman and Needleman Wunsch and a linear gap penalty",
+  "scripts": {
+    "dev": "shadow-cljs watch app",
+    "build": "shadow-cljs release app",
+    "demo": "shadow-cljs release demo",
+    "repl": "shadow-cljs cljs-repl app",
+    "test": "clojure -M:test"
+  },
+  "devDependencies": {
+    "shadow-cljs": "^2.28.10"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}

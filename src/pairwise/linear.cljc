@@ -1,7 +1,7 @@
 (ns pairwise.linear)
 
 (defn initialise-D
-  "Initial a dynamic programming matrix, given two sequences s1 and s2"
+  "Initialize a dynamic programming matrix, given two sequences s1 and s2"
   [s1 s2]
   (let [n (inc (count s1))
         m (inc (count s2))
@@ -11,19 +11,24 @@
                                          }))))]
     (assoc-in D [0 0 :score] 0)))
 
-;;(s/fdef initialise-D
-;;        :args (s/cat :top :pairwise.spec/bioseq-input :bottom :pairwise.spec/bioseq-input))
-
 (defn has-score? 
   "predicate for score"
   [s]
   (and (map? s) (number? (:score s))))
 
-#_(s/fdef has-score?
-        :ret boolean?)
 
-(defn score-match
-  "return the score for a match condition"
+(defn substitution-type
+  "return the type of substitution at positions i and j of strings s1 and s2"
+  [s1 s2 i j]
+  (assert (and (> i -1) (<= i (inc (count s1)))) (format "i is %d, (count s1) is %d, s1 is %s" i (count s1) s1))
+  (assert (and (> j -1) (<= j (inc (count s2)))) (format "j is %d, (count s2) is %d, s2 is %s" j (count s2) s2))
+  (cond
+    (or (zero? i) (zero? j)) nil
+    (= (get s1 (dec i)) (get s2 (dec j))) :match
+    :else :mismatch))
+
+(defn substitution-score
+  "return the score for a substitution"
   [D i j s]
   (let [[i' j'] [(dec i) (dec j)]]
     (cond
@@ -32,7 +37,7 @@
       :else {
              :score (+ (get-in D [i' j' :score]) s)
              :from  [i' j']
-             :step  :diag})))
+             :direction  :diag})))
 
 (defn score-vertical-gap
     "return the score for a vertical gap condition with gap penalty d"
@@ -43,7 +48,7 @@
     :else
     {:score (-  (get-in D [(dec row) col :score] ) d)
      :from  [(dec row) col]
-     :step  :vert
+     :direction  :vert
      }))
 
 
@@ -56,7 +61,7 @@
     :else
     {:score (-  (get-in D [row (dec col) :score] ) d)
      :from  [row (dec col)]
-     :step  :horiz
+     :direction  :horiz
      }))
 
 
@@ -65,9 +70,11 @@
   [D S gap-penalty s1 s2 row col & {:keys [type]}]
   (let [L1        (get (vec (seq s1)) (dec col)) 
         L2        (get (vec (seq s2)) (dec row))
+        cols      (inc (count s1))
+        step      (+ col (* row cols))
         s         (get S [L1 L2])
         score-vec (remove nil?
-                          [(score-match D row col s)
+                          [(substitution-score D row col s)
                            (score-horizontal-gap D row col gap-penalty)
                            (score-vertical-gap D row col gap-penalty)
                            (when (= type :local) {:score 0 :from nil})])
@@ -76,10 +83,15 @@
         score-vec (if (= type :local)
                     (map #(if (zero? (:score %1)) {:score 0 :from nil} %1) score-vec)
                     score-vec)
-        score-vec (distinct (filter #(= (:score %1) max-score) score-vec))]
+        score-vec (distinct (filter #(= (:score %1) max-score) score-vec))
+        direction (map :direction score-vec)
+        diag? (some #(= :diag %) direction)
+        ]
     (assoc-in D [row col ] {:score max-score
+                            :substitution-type (if diag? (substitution-type s1 s2 col row) nil)
                             :from  (map :from score-vec)
-                            :step  (map :step score-vec)
+                            :direction direction
+                            :step step
                             })))
 
 
@@ -176,15 +188,24 @@
 
 
 (defn pairwise-align
-  "doc-string"
+  "Return a pairwise alignment (including all the internals) for two sequences provided as strings. "
   [s1 s2 S gap-penalty & {:keys [type] :or {type :global}} ]
   (let [D            (initialise-D s1 s2)
         D            (build-dp-matrix S gap-penalty s1 s2 :type type)
-        paths        (findpaths D type)]
+        last-D-step  (* (inc (count s2)) (inc (count s1)))
+        paths        (findpaths D type)
+        when-visible (fn [path]
+                       (->> path
+                            count
+                            dec
+                            range
+                            (map + (repeat (count path) (+ 1 last-D-step)))))
+        path-steps (map when-visible paths)]
     {:score          (alignment-score D type)
      :rows (count (seq s2))
      :cols (count (seq s1))
      :optimal-paths  paths
+     :optimal-path-steps path-steps
      :alignments     (map  #(path-to-alignment %1 s1 s2) paths)
      :dp-matrix      D
      :sequence-1     s1

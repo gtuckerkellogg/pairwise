@@ -1,0 +1,29 @@
+{:paths ["src" "resources"]
+
+ :deps {org.clojure/clojure {:mvn/version "1.12.0"}
+        org.clojure/clojurescript {:mvn/version "1.11.132"}
+        org.clojure/tools.cli {:mvn/version "1.1.230"}
+        org.clojure/core.async {:mvn/version "1.6.681"}
+        reagent/reagent {:mvn/version "1.2.0"}
+        hiccup/hiccup {:mvn/version "1.0.5"}
+        selmer/selmer {:mvn/version "1.12.61"}
+        reagent-forms/reagent-forms {:mvn/version "0.5.43"}}
+
+ :aliases
+ {:dev {:extra-deps {org.clojure/test.check {:mvn/version "1.1.1"}
+                     binaryage/devtools {:mvn/version "1.0.7"}
+                     thheller/shadow-cljs {:mvn/version "2.28.10"}}
+        :main-opts ["-m" "shadow.cljs.devtools.cli"]}
+
+  :test {:extra-paths ["test"]
+         :extra-deps {org.clojure/test.check {:mvn/version "1.1.1"}
+                      io.github.cognitect-labs/test-runner {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
+         :main-opts ["-m" "cognitect.test-runner"]
+         :exec-fn cognitect.test-runner.api/test}
+
+  :repl {:extra-deps {nrepl/nrepl {:mvn/version "1.1.0"}
+                      cider/cider-nrepl {:mvn/version "0.47.1"}}
+         :main-opts ["-m" "nrepl.cmdline" "--middleware" "[cider.nrepl/cider-middleware]"]}
+
+  :outdated {:replace-deps {com.github.liquidz/antq {:mvn/version "2.8.1185"}}
+             :main-opts ["-m" "antq.core"]}}}

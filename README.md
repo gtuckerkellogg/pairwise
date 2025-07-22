@@ -4,8 +4,37 @@ A Clojure/Clojurescript library for pairwise sequence comparison
 
 ## Usage
 
-You can use [leiningen](https://leiningen.org/) to build the demo site.
+This project now uses [Clojure CLI tools](https://clojure.org/guides/getting_started) and [Shadow CLJS](https://shadow-cljs.github.io/docs/UsersGuide.html) for building.
 
+### Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server with hot reloading
+npm run dev
+# or
+clojure -M:dev watch app
+
+# Open http://localhost:3000 in your browser
 ```
-$ lein cljsbuild once demo
+
+### Building
+
+```bash
+# Build demo site
+npm run demo
+
+# Build production version
+npm run build
+```
+
+### Testing
+
+```bash
+# Run tests
+npm test
+# or
+clojure -M:test
 ```

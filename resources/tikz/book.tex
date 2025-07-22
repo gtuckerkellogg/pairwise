@@ -1,0 +1,289 @@
+\documentclass[beamer,handout]{standalone}
+\usepackage{tikz}
+\usetikzlibrary{calc}
+\usepackage{ifthen}
+\newcommand\drawup[3]
+{%
+  \ifthenelse{\equal{#3}{align step}}{%
+    \draw[->,#3] ($(#1,#2) - (0.15,0)$) -- ($(#1,#2) - (0.85,0)$);
+  }{%
+%    \draw[<-,erase step] ($(#1,#2) - (0.15,0)$) -- ($(#1,#2) - (0.85,0)$);
+    \draw[->,#3] ($(#1,#2) - (0.15,0)$) -- ($(#1,#2) - (0.85,0)$);
+  }
+}
+\newcommand\drawleft[3]
+  {%
+  \ifthenelse{\equal{#3}{align step}}{%
+  \draw[->,#3] ($(#1,#2) - (0,0.15)$) -- ($(#1,#2) - (0,0.85)$);
+  }{%
+%  \draw[<-,erase step] ($(#1,#2) - (0,0.15)$) -- ($(#1,#2) - (0,0.85)$);
+  \draw[->,#3] ($(#1,#2) - (0,0.15)$) -- ($(#1,#2) - (0,0.85)$);
+  }
+}
+
+\newcommand\drawmatch[3]{%
+  \ifthenelse{\equal{#3}{align step}}{%
+    \draw[->,#3] ($(#1,#2) - (0.15,0.15)$) -- ($(#1,#2) - (0.85,0.85)$);
+  }{%
+%    \draw[<-,erase step] ($(#1,#2) - (0.15,0.15)$) -- ($(#1,#2) - (0.85,0.85)$);
+    \draw[->,#3] ($(#1,#2) - (0.15,0.15)$) -- ($(#1,#2) - (0.85,0.85)$);
+  }}
+
+\tikzset{erase step/.style={>=latex,draw=white,fill=white,thick}}
+\tikzset{align step/.style={>=latex,draw=black!30,fill=black!50,thick}}
+\tikzset{path step/.style={>=latex,draw=black!50,fill=black!50,thick}}
+\tikzset{optimal step/.style={>=latex,draw=black,fill=black,very thick}}
+\tikzset{optimal-but-non-identical step/.style={>=latex,draw=red,fill=red,very thick}}
+% \begin{document}
+
+% \begin{standaloneframe}
+%   \begin{tikzpicture}[]
+
+\begin{document}
+
+\begin{standaloneframe}
+
+\begin{tikzpicture}
+\pgftransformrotate{-90}
+\draw [xshift=-0.5cm,yshift=-0.5cm,color=lightgray] (0,0) grid (8,11);
+\draw (-1,1) node [scale=1] {H};
+\draw (-1,2) node [scale=1] {E};
+\draw (-1,3) node [scale=1] {A};
+\draw (-1,4) node [scale=1] {G};
+\draw (-1,5) node [scale=1] {A};
+\draw (-1,6) node [scale=1] {W};
+\draw (-1,7) node [scale=1] {G};
+\draw (-1,8) node [scale=1] {H};
+\draw (-1,9) node [scale=1] {E};
+\draw (-1,10) node [scale=1] {E};
+\draw (1,-1) node [scale=1] {P};
+\draw (2,-1) node [scale=1] {A};
+\draw (3,-1) node [scale=1] {W};
+\draw (4,-1) node [scale=1] {H};
+\draw (5,-1) node [scale=1] {E};
+\draw (6,-1) node [scale=1] {A};
+\draw (7,-1) node [scale=1] {E};
+\visible<1->{\draw (0,0) node [fill=white,scale=0.5] {0};}
+\visible<12->{\draw (1,0) node [fill=white,scale=0.5] {-8};}
+\visible<23->{\draw (2,0) node [fill=white,scale=0.5] {-16};}
+\visible<34->{\draw (3,0) node [fill=white,scale=0.5] {-24};}
+\visible<45->{\draw (4,0) node [fill=white,scale=0.5] {-32};}
+\visible<56->{\draw (5,0) node [fill=white,scale=0.5] {-40};}
+\visible<67->{\draw (6,0) node [fill=white,scale=0.5] {-48};}
+\visible<78->{\draw (7,0) node [fill=white,scale=0.5] {-56};}
+\visible<2->{\draw (0,1) node [fill=white,scale=0.5] {-8};}
+\visible<13->{\draw (1,1) node [fill=white,scale=0.5] {-2};}
+\visible<24->{\draw (2,1) node [fill=white,scale=0.5] {-10};}
+\visible<35->{\draw (3,1) node [fill=white,scale=0.5] {-18};}
+\visible<46->{\draw (4,1) node [fill=white,scale=0.5] {-14};}
+\visible<57->{\draw (5,1) node [fill=white,scale=0.5] {-22};}
+\visible<68->{\draw (6,1) node [fill=white,scale=0.5] {-30};}
+\visible<79->{\draw (7,1) node [fill=white,scale=0.5] {-38};}
+\visible<3->{\draw (0,2) node [fill=white,scale=0.5] {-16};}
+\visible<14->{\draw (1,2) node [fill=white,scale=0.5] {-9};}
+\visible<25->{\draw (2,2) node [fill=white,scale=0.5] {-3};}
+\visible<36->{\draw (3,2) node [fill=white,scale=0.5] {-11};}
+\visible<47->{\draw (4,2) node [fill=white,scale=0.5] {-18};}
+\visible<58->{\draw (5,2) node [fill=white,scale=0.5] {-8};}
+\visible<69->{\draw (6,2) node [fill=white,scale=0.5] {-16};}
+\visible<80->{\draw (7,2) node [fill=white,scale=0.5] {-24};}
+\visible<4->{\draw (0,3) node [fill=white,scale=0.5] {-24};}
+\visible<15->{\draw (1,3) node [fill=white,scale=0.5] {-17};}
+\visible<26->{\draw (2,3) node [fill=white,scale=0.5] {-4};}
+\visible<37->{\draw (3,3) node [fill=white,scale=0.5] {-6};}
+\visible<48->{\draw (4,3) node [fill=white,scale=0.5] {-13};}
+\visible<59->{\draw (5,3) node [fill=white,scale=0.5] {-16};}
+\visible<70->{\draw (6,3) node [fill=white,scale=0.5] {-3};}
+\visible<81->{\draw (7,3) node [fill=white,scale=0.5] {-11};}
+\visible<5->{\draw (0,4) node [fill=white,scale=0.5] {-32};}
+\visible<16->{\draw (1,4) node [fill=white,scale=0.5] {-25};}
+\visible<27->{\draw (2,4) node [fill=white,scale=0.5] {-12};}
+\visible<38->{\draw (3,4) node [fill=white,scale=0.5] {-7};}
+\visible<49->{\draw (4,4) node [fill=white,scale=0.5] {-8};}
+\visible<60->{\draw (5,4) node [fill=white,scale=0.5] {-16};}
+\visible<71->{\draw (6,4) node [fill=white,scale=0.5] {-11};}
+\visible<82->{\draw (7,4) node [fill=white,scale=0.5] {-6};}
+\visible<6->{\draw (0,5) node [fill=white,scale=0.5] {-40};}
+\visible<17->{\draw (1,5) node [fill=white,scale=0.5] {-33};}
+\visible<28->{\draw (2,5) node [fill=white,scale=0.5] {-20};}
+\visible<39->{\draw (3,5) node [fill=white,scale=0.5] {-15};}
+\visible<50->{\draw (4,5) node [fill=white,scale=0.5] {-9};}
+\visible<61->{\draw (5,5) node [fill=white,scale=0.5] {-9};}
+\visible<72->{\draw (6,5) node [fill=white,scale=0.5] {-11};}
+\visible<83->{\draw (7,5) node [fill=white,scale=0.5] {-12};}
+\visible<7->{\draw (0,6) node [fill=white,scale=0.5] {-48};}
+\visible<18->{\draw (1,6) node [fill=white,scale=0.5] {-41};}
+\visible<29->{\draw (2,6) node [fill=white,scale=0.5] {-28};}
+\visible<40->{\draw (3,6) node [fill=white,scale=0.5] {-5};}
+\visible<51->{\draw (4,6) node [fill=white,scale=0.5] {-13};}
+\visible<62->{\draw (5,6) node [fill=white,scale=0.5] {-12};}
+\visible<73->{\draw (6,6) node [fill=white,scale=0.5] {-12};}
+\visible<84->{\draw (7,6) node [fill=white,scale=0.5] {-14};}
+\visible<8->{\draw (0,7) node [fill=white,scale=0.5] {-56};}
+\visible<19->{\draw (1,7) node [fill=white,scale=0.5] {-49};}
+\visible<30->{\draw (2,7) node [fill=white,scale=0.5] {-36};}
+\visible<41->{\draw (3,7) node [fill=white,scale=0.5] {-13};}
+\visible<52->{\draw (4,7) node [fill=white,scale=0.5] {-7};}
+\visible<63->{\draw (5,7) node [fill=white,scale=0.5] {-15};}
+\visible<74->{\draw (6,7) node [fill=white,scale=0.5] {-12};}
+\visible<85->{\draw (7,7) node [fill=white,scale=0.5] {-15};}
+\visible<9->{\draw (0,8) node [fill=white,scale=0.5] {-64};}
+\visible<20->{\draw (1,8) node [fill=white,scale=0.5] {-57};}
+\visible<31->{\draw (2,8) node [fill=white,scale=0.5] {-44};}
+\visible<42->{\draw (3,8) node [fill=white,scale=0.5] {-21};}
+\visible<53->{\draw (4,8) node [fill=white,scale=0.5] {-3};}
+\visible<64->{\draw (5,8) node [fill=white,scale=0.5] {-7};}
+\visible<75->{\draw (6,8) node [fill=white,scale=0.5] {-15};}
+\visible<86->{\draw (7,8) node [fill=white,scale=0.5] {-12};}
+\visible<10->{\draw (0,9) node [fill=white,scale=0.5] {-72};}
+\visible<21->{\draw (1,9) node [fill=white,scale=0.5] {-65};}
+\visible<32->{\draw (2,9) node [fill=white,scale=0.5] {-52};}
+\visible<43->{\draw (3,9) node [fill=white,scale=0.5] {-29};}
+\visible<54->{\draw (4,9) node [fill=white,scale=0.5] {-11};}
+\visible<65->{\draw (5,9) node [fill=white,scale=0.5] {3};}
+\visible<76->{\draw (6,9) node [fill=white,scale=0.5] {-5};}
+\visible<87->{\draw (7,9) node [fill=white,scale=0.5] {-9};}
+\visible<11->{\draw (0,10) node [fill=white,scale=0.5] {-80};}
+\visible<22->{\draw (1,10) node [fill=white,scale=0.5] {-73};}
+\visible<33->{\draw (2,10) node [fill=white,scale=0.5] {-60};}
+\visible<44->{\draw (3,10) node [fill=white,scale=0.5] {-37};}
+\visible<55->{\draw (4,10) node [fill=white,scale=0.5] {-19};}
+\visible<66->{\draw (5,10) node [fill=white,scale=0.5] {-5};}
+\visible<77->{\draw (6,10) node [fill=white,scale=0.5] {2};}
+\visible<88->{\draw (7,10) node [fill=white,scale=0.5] {1};}
+\visible<12->{\drawup{1}{0}{align step}}
+\visible<23->{\drawup{2}{0}{align step}}
+\visible<34->{\drawup{3}{0}{align step}}
+\visible<45->{\drawup{4}{0}{align step}}
+\visible<56->{\drawup{5}{0}{align step}}
+\visible<67->{\drawup{6}{0}{align step}}
+\visible<78->{\drawup{7}{0}{align step}}
+\visible<2->{\drawleft{0}{1}{align step}}
+\visible<13->{\drawmatch{1}{1}{align step}}
+\visible<24->{\drawmatch{2}{1}{align step}}
+\visible<24->{\drawup{2}{1}{align step}}
+\visible<35->{\drawup{3}{1}{align step}}
+\visible<46->{\drawmatch{4}{1}{align step}}
+\visible<57->{\drawup{5}{1}{align step}}
+\visible<68->{\drawup{6}{1}{align step}}
+\visible<79->{\drawup{7}{1}{align step}}
+\visible<3->{\drawleft{0}{2}{align step}}
+\visible<14->{\drawmatch{1}{2}{align step}}
+\visible<25->{\drawmatch{2}{2}{align step}}
+\visible<36->{\drawup{3}{2}{align step}}
+\visible<47->{\drawmatch{4}{2}{align step}}
+\visible<58->{\drawmatch{5}{2}{align step}}
+\visible<69->{\drawup{6}{2}{align step}}
+\visible<80->{\drawmatch{7}{2}{align step}}
+\visible<80->{\drawup{7}{2}{align step}}
+\visible<4->{\drawleft{0}{3}{align step}}
+\visible<15->{\drawmatch{1}{3}{align step}}
+\visible<15->{\drawleft{1}{3}{align step}}
+\visible<26->{\drawmatch{2}{3}{align step}}
+\visible<37->{\drawmatch{3}{3}{align step}}
+\visible<48->{\drawmatch{4}{3}{align step}}
+\visible<59->{\drawleft{5}{3}{align step}}
+\visible<70->{\drawmatch{6}{3}{align step}}
+\visible<81->{\drawup{7}{3}{align step}}
+\visible<5->{\drawleft{0}{4}{align step}}
+\visible<16->{\drawleft{1}{4}{align step}}
+\visible<27->{\drawleft{2}{4}{align step}}
+\visible<38->{\drawmatch{3}{4}{align step}}
+\visible<49->{\drawmatch{4}{4}{align step}}
+\visible<60->{\drawmatch{5}{4}{align step}}
+\visible<60->{\drawup{5}{4}{align step}}
+\visible<71->{\drawleft{6}{4}{align step}}
+\visible<82->{\drawmatch{7}{4}{align step}}
+\visible<6->{\drawleft{0}{5}{align step}}
+\visible<17->{\drawmatch{1}{5}{align step}}
+\visible<17->{\drawleft{1}{5}{align step}}
+\visible<28->{\drawmatch{2}{5}{align step}}
+\visible<28->{\drawleft{2}{5}{align step}}
+\visible<39->{\drawmatch{3}{5}{align step}}
+\visible<39->{\drawleft{3}{5}{align step}}
+\visible<50->{\drawmatch{4}{5}{align step}}
+\visible<61->{\drawmatch{5}{5}{align step}}
+\visible<72->{\drawmatch{6}{5}{align step}}
+\visible<83->{\drawmatch{7}{5}{align step}}
+\visible<7->{\drawleft{0}{6}{align step}}
+\visible<18->{\drawleft{1}{6}{align step}}
+\visible<29->{\drawleft{2}{6}{align step}}
+\visible<40->{\drawmatch{3}{6}{align step}}
+\visible<51->{\drawup{4}{6}{align step}}
+\visible<62->{\drawmatch{5}{6}{align step}}
+\visible<73->{\drawmatch{6}{6}{align step}}
+\visible<84->{\drawmatch{7}{6}{align step}}
+\visible<8->{\drawleft{0}{7}{align step}}
+\visible<19->{\drawleft{1}{7}{align step}}
+\visible<30->{\drawleft{2}{7}{align step}}
+\visible<41->{\drawleft{3}{7}{align step}}
+\visible<52->{\drawmatch{4}{7}{align step}}
+\visible<63->{\drawup{5}{7}{align step}}
+\visible<74->{\drawmatch{6}{7}{align step}}
+\visible<85->{\drawmatch{7}{7}{align step}}
+\visible<9->{\drawleft{0}{8}{align step}}
+\visible<20->{\drawleft{1}{8}{align step}}
+\visible<31->{\drawleft{2}{8}{align step}}
+\visible<42->{\drawleft{3}{8}{align step}}
+\visible<53->{\drawmatch{4}{8}{align step}}
+\visible<64->{\drawmatch{5}{8}{align step}}
+\visible<75->{\drawup{6}{8}{align step}}
+\visible<86->{\drawmatch{7}{8}{align step}}
+\visible<10->{\drawleft{0}{9}{align step}}
+\visible<21->{\drawmatch{1}{9}{align step}}
+\visible<21->{\drawleft{1}{9}{align step}}
+\visible<32->{\drawleft{2}{9}{align step}}
+\visible<43->{\drawleft{3}{9}{align step}}
+\visible<54->{\drawleft{4}{9}{align step}}
+\visible<65->{\drawmatch{5}{9}{align step}}
+\visible<76->{\drawup{6}{9}{align step}}
+\visible<87->{\drawmatch{7}{9}{align step}}
+\visible<11->{\drawleft{0}{10}{align step}}
+\visible<22->{\drawmatch{1}{10}{align step}}
+\visible<22->{\drawleft{1}{10}{align step}}
+\visible<33->{\drawleft{2}{10}{align step}}
+\visible<44->{\drawleft{3}{10}{align step}}
+\visible<55->{\drawleft{4}{10}{align step}}
+\visible<66->{\drawmatch{5}{10}{align step}}
+\visible<66->{\drawleft{5}{10}{align step}}
+\visible<77->{\drawmatch{6}{10}{align step}}
+\visible<88->{\drawmatch{7}{10}{align step}}
+\visible<89->{\drawmatch{7}{10}{optimal step}}
+\visible<90->{\drawup{6}{9}{optimal-but-non-identical step}}
+\visible<91->{\drawmatch{5}{9}{optimal step}}
+\visible<92->{\drawmatch{4}{8}{optimal step}}
+\visible<93->{\drawleft{3}{7}{optimal-but-non-identical step}}
+\visible<94->{\drawmatch{3}{6}{optimal step}}
+\visible<95->{\drawmatch{2}{5}{optimal step}}
+\visible<96->{\drawleft{1}{4}{optimal-but-non-identical step}}
+\visible<97->{\drawmatch{1}{3}{optimal-but-non-identical step}}
+\visible<98->{\drawleft{0}{2}{optimal-but-non-identical step}}
+\visible<99->{\drawleft{0}{1}{optimal-but-non-identical step}}
+\visible<89->{\drawmatch{7}{10}{optimal step}}
+\visible<90->{\drawup{6}{9}{optimal-but-non-identical step}}
+\visible<91->{\drawmatch{5}{9}{optimal step}}
+\visible<92->{\drawmatch{4}{8}{optimal step}}
+\visible<93->{\drawleft{3}{7}{optimal-but-non-identical step}}
+\visible<94->{\drawmatch{3}{6}{optimal step}}
+\visible<95->{\drawmatch{2}{5}{optimal step}}
+\visible<96->{\drawleft{1}{4}{optimal-but-non-identical step}}
+\visible<97->{\drawleft{1}{3}{optimal-but-non-identical step}}
+\visible<98->{\drawmatch{1}{2}{optimal-but-non-identical step}}
+\visible<99->{\drawleft{0}{1}{optimal-but-non-identical step}}
+\visible<89->{\drawmatch{7}{10}{optimal step}}
+\visible<90->{\drawup{6}{9}{optimal-but-non-identical step}}
+\visible<91->{\drawmatch{5}{9}{optimal step}}
+\visible<92->{\drawmatch{4}{8}{optimal step}}
+\visible<93->{\drawleft{3}{7}{optimal-but-non-identical step}}
+\visible<94->{\drawmatch{3}{6}{optimal step}}
+\visible<95->{\drawleft{2}{5}{optimal step}}
+\visible<96->{\drawleft{2}{4}{optimal-but-non-identical step}}
+\visible<97->{\drawmatch{2}{3}{optimal step}}
+\visible<98->{\drawmatch{1}{2}{optimal-but-non-identical step}}
+\visible<99->{\drawleft{0}{1}{optimal-but-non-identical step}}
+
+\end{tikzpicture}
+
+\end{standaloneframe}
+
+\end{document}

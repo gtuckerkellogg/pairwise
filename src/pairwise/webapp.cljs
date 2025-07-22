@@ -250,9 +250,9 @@
 
        ])))
 
-(reagent/render-component [page]
-                          (. js/document (getElementById "app")))
+(defn init []
+  (reagent/render [page]
+                  (. js/document (getElementById "app"))))
 
-(defn on-js-reload []
-  (swap! ;app-state
-         update-in [:__figwheel_counter] inc))
+(defn ^:dev/after-load reload []
+  (init))

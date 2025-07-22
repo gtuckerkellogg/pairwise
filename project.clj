@@ -1,22 +1,26 @@
 (defproject pairwise "0.1.0-SNAPSHOT"
-  :description "Pairwise alignment using Smith-Waterman and Needleman Wunsch"
+  :description "Pairwise alignment using Smith-Waterman and Needleman Wunsch and a linear gap penalty"
   :url "https://github.com/gtuckerkellogg/pairwise"
   :license {:name "MIT"
             :url  "https://opensource.org/licenses/MIT"}
   :profiles {
-             :dev {:dependencies [[org.clojure/test.check "0.10.0-alpha2"]]}
+             :dev {:dependencies [[org.clojure/test.check "0.10.0"]]}
              }
   :dependencies [
-                 [org.clojure/clojure "1.9.0"]
-                 [org.clojure/clojurescript "1.9.946"]
-                 [org.clojure/core.async  "0.4.474"
+                 [org.clojure/clojure "1.10.1"]
+                 ;; for the clojurescript app
+                 [org.clojure/clojurescript "1.10.520"]
+                 [org.clojure/tools.cli "1.1.230"]
+                 ;; is this really needed? 
+                 [org.clojure/core.async  "0.4.500"
                   :exclusions [org.clojure/tools.reader]]
-                 [cljsjs/bootstrap "3.3.6-1"]
-                 [binaryage/devtools "0.8.3"]
+                 ; is this needed
+                 [cljsjs/bootstrap "3.4.1-0"]
+                 [binaryage/devtools "0.9.10"]
                  [hiccup "1.0.5"]
                  [reagent "0.8.1"]
-                 [selmer "1.10.1"]
-                 [reagent-forms "0.5.28"]]
+                 [selmer "1.12.14"]
+                 [reagent-forms "0.5.43"]]
 
   :plugins [[lein-figwheel "0.5.16"]
             [lein-cljsbuild "1.1.7" :exclusions [[org.clojure/clojure]]]]

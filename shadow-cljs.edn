@@ -1,0 +1,32 @@
+{:source-paths ["src"]
+
+ :dependencies [[binaryage/devtools "1.0.7"]
+                [reagent/reagent "1.2.0"]
+                [reagent-forms/reagent-forms "0.5.43"]]
+
+ :dev-http {3000 {:root "resources/public"
+                  :handler shadow.http.push-state/handle}}
+
+ :builds
+ {:app {:target :browser
+        :output-dir "resources/public/js/compiled"
+        :asset-path "js/compiled"
+        :modules {:main {:init-fn pairwise.webapp/init
+                         :preloads [devtools.preload]}}
+        :devtools {:http-root "resources/public"
+                   :http-port 3000
+                   :preloads [devtools.preload]}}
+
+  :demo {:target :browser
+         :output-dir "demo/js/compiled"
+         :asset-path "js/compiled"
+         :modules {:main {:init-fn pairwise.webapp/init}}
+         :compiler-options {:optimizations :advanced
+                            :pretty-print false}}
+
+  :prod {:target :browser
+         :output-dir "resources/public/js/compiled"
+         :asset-path "js/compiled"
+         :modules {:main {:init-fn pairwise.webapp/init}}
+         :compiler-options {:optimizations :advanced
+                            :pretty-print false}}}}

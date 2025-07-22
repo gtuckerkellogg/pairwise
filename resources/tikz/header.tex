@@ -1,4 +1,4 @@
-\documentclass[beamer]{standalone}
+\documentclass[beamer,handout]{standalone}
 \usepackage{tikz}
 \usetikzlibrary{calc}
 \usepackage{ifthen}
@@ -29,16 +29,12 @@
     \draw[->,#3] ($(#1,#2) - (0.15,0.15)$) -- ($(#1,#2) - (0.85,0.85)$);
   }}
 
-  \tikzset{erase step/.style={>=latex,draw=white,fill=white,thick}}
- \tikzset{align step/.style={>=latex,draw=black!30,fill=black!50,thick}}
- \tikzset{path step/.style={>=latex,draw=black!50,fill=black!50,thick}}
- \tikzset{optimal step/.style={>=latex,draw=black,fill=red,very thick}}
+\tikzset{erase step/.style={>=latex,draw=white,fill=white,thick}}
+\tikzset{align step/.style={>=latex,draw=black!30,fill=black!50,thick}}
+\tikzset{path step/.style={>=latex,draw=black!50,fill=black!50,thick}}
+\tikzset{optimal step/.style={>=latex,draw=black,fill=black,very thick}}
+\tikzset{optimal-but-non-identical step/.style={>=latex,draw=red,fill=red,very thick}}
 % \begin{document}
 
 % \begin{standaloneframe}
-%  \resizebox[!][8cm]{
-%\begin{tikzpicture}[]
-
-
-
- 
+%   \begin{tikzpicture}[]
