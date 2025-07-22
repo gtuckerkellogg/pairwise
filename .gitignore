@@ -13,6 +13,7 @@ pom.xml.asc
 
 # ClojureScript / Shadow-CLJS
 resources/public/js/compiled/
+demo/js/compiled
 .shadow-cljs/
 node_modules/
 
