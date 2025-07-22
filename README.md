@@ -1,6 +1,8 @@
 # pairwise
 
-A Clojure/Clojurescript library for pairwise sequence comparison
+A Clojure/Clojurescript library for pairwise sequence comparison using dynamic programming algorithms (Needleman-Wunsch and Smith-Waterman) with linear gap penalties.
+
+When published on github, the application will run at [[demo]].
 
 ## Usage
 
