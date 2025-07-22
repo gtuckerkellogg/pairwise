@@ -20,8 +20,8 @@
 (defn substitution-type
   "return the type of substitution at positions i and j of strings s1 and s2"
   [s1 s2 i j]
-  (assert (and (> i -1) (<= i (inc (count s1)))) (format "i is %d, (count s1) is %d, s1 is %s" i (count s1) s1))
-  (assert (and (> j -1) (<= j (inc (count s2)))) (format "j is %d, (count s2) is %d, s2 is %s" j (count s2) s2))
+  (assert (and (> i -1) (<= i (inc (count s1)))) (str "i is " i ", (count s1) is " (count s1) ", s1 is " s1))
+  (assert (and (> j -1) (<= j (inc (count s2)))) (str "j is " j ", (count s2) is " (count s2) ", s2 is " s2))
   (cond
     (or (zero? i) (zero? j)) nil
     (= (get s1 (dec i)) (get s2 (dec j))) :match

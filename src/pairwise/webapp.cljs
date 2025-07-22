@@ -1,6 +1,7 @@
 (ns pairwise.webapp
-  (:require [reagent.core :as reagent :refer (atom)]
-            [reagent-forms.core :refer [bind-fields init-field value-of]]
+  (:require [clojure.string :as str]
+            [reagent.core :as reagent :refer (atom)]
+            [reagent.dom :as rdom]
             [pairwise.linear :as linear]
             [pairwise.substitution :as sub]
             [pairwise.cljsmacros  :refer-macros [read-file]]))
@@ -40,14 +41,14 @@
   (let [x1 (+ 25 (* c 50))
         y1 (+ 25 (* r 50))
         from-seq (get-in app-state [:result :dp-matrix  r c :from])
-        xpos (fn [[r c]] (+ 25 (* 50 c)))
-        ypos (fn [[r c]] (+ 25 (* 50 r)))
+        xpos (fn [[_ c]] (+ 25 (* 50 c)))
+        ypos (fn [[r _]] (+ 25 (* 50 r)))
         ]
-    (map  #(if-not (nil? %1)
-                           [:line { :stroke stroke :stroke-width stroke-width :x1 x1 :x2 (xpos %1) :y1 y1
-                      :y2 (ypos %1)}] )  from-seq)))
+    (map  #(when-not (nil? %1)
+             [:line { :stroke stroke :stroke-width stroke-width :x1 x1 :x2 (xpos %1) :y1 y1
+                      :y2 (ypos %1)}])  from-seq)))
 
-(defn draw-mask [app-state [r c]]
+(defn draw-mask [_app-state [r c]]
   (let [x1 (+ 25 (* c 50))
         y1 (+ 25 (* r 50))]
     [:circle {:cx x1 :cy y1 :r 12 :fill "white"}]))
@@ -71,7 +72,7 @@
                         [:text {:y (+ 25 (* (inc i) 50)) :x -25 :font-size "150%" :text-anchor "middle" :alignment-baseline "middle"} x])]
     (map-indexed draw-a-letter (seq (:bottom-seq app-state)))))
 
-(defn svg-component [ app-state & args ]
+(defn svg-component [ app-state & _args ]
   (let [ij      (for [cols (range (count (get-in app-state [:result :dp-matrix 0])))
                       rows (range (count (get-in app-state [:result :dp-matrix])))]
                   [rows cols])
@@ -100,95 +101,98 @@
    [:div.col-md-4  [:label label]]
    [:div.col-md-8 input]])
 
+(defn update-state! [app-state key value]
+  (swap! app-state assoc key value)
+  (swap! app-state assoc :result (app-results @app-state)))
 
-(defn radio [label name value & {:keys [checked] :or {checked false}}]
-  [:div
-   [:label
-    [:input {:field :radio :name name :value value :checked checked}]
-    label]])
+(defn form-component [app-state]
+  (let [state @app-state]
+    [:div 
+     [:div {:class "panel panel-primary"}
+      [:div.panel-heading "Input sequences (up to 10 letters)"]
+      [:div.panel-body
+       (row "TOP sequence"
+            [:input.form-control {:type "text"
+                                  :value (:top-seq state)
+                                  :max-length 10
+                                  :on-change #(update-state! app-state :top-seq 
+                                                           (sub/sanitise (-> % .-target .-value)))}])
 
+       (row "BOTTOM sequence"
+            [:input.form-control {:type "text"
+                                  :value (:bottom-seq state)
+                                  :max-length 10
+                                  :on-change #(update-state! app-state :bottom-seq 
+                                                           (sub/sanitise (-> % .-target .-value)))}])]]
 
-(defn input [label type id]
-  (row label [:input.form-control {:field type :id id}]))
+     [:div {:class "panel panel-primary"}
+      [:div.panel-heading "Alignment type"]
+      [:div.panel-body
+       [:div.btn-group
+        [:button.btn.btn-default {:class (when (= :global (:alignment-type state)) "active")
+                                  :on-click #(update-state! app-state :alignment-type :global)} 
+         "Needleman-Wunsch"]
+        [:button.btn.btn-default {:class (when (= :local (:alignment-type state)) "active")
+                                  :on-click #(update-state! app-state :alignment-type :local)} 
+         "Smith-Waterman"]]]]
+     
+     [:div {:class "panel panel-primary"}
+      [:div.panel-heading "Algorithm Parameters"]
+      [:div.panel-body 
 
-(def form-template
-  [:div [:div {:class "panel panel-primary"}
-         [:div.panel-heading "Input sequences (up to 10 letters)"]
-         [:div.panel-body
-          (row "TOP sequence"
-               [:input.form-control {:field :text
-                                     :id :top-seq
-                                     :max-length 10
-                                     :in-fn sub/sanitise
-                                     :out-fn sub/sanitise
-                                     }])
+       [:div.row 
+        [:div.col-md-4 {:vertical-align "middle"} [:label  "Scoring Matrix"]]
+        [:div.col-md-8
+         [:div
+          [:label
+           [:input {:type "radio" 
+                    :name "scoring-matrix-type" 
+                    :value "simple"
+                    :checked (= :simple (:scoring-matrix-type state))
+                    :on-change #(update-state! app-state :scoring-matrix-type :simple)}]
+           " User-defined"]]
+         [:div
+          [:label
+           [:input {:type "radio" 
+                    :name "scoring-matrix-type" 
+                    :value "standard"
+                    :checked (= :standard (:scoring-matrix-type state))
+                    :on-change #(update-state! app-state :scoring-matrix-type :standard)}]
+           " Standard"]]]]
 
-          (row "BOTTOM sequence"
-               [:input.form-control {:field :text
-                                     :id :bottom-seq
-                                     :max-length 10
-                                     :in-fn sub/sanitise
-                                     :out-fn sub/sanitise
-                                     }])]]
+       (when (= :simple (:scoring-matrix-type state))
+         [:div.form-group
+          (row [:label "match: " (:match-score state)]
+               [:input.form-control
+                {:type "range" :min 0 :max 15 
+                 :value (:match-score state)
+                 :on-change #(update-state! app-state :match-score 
+                                          (js/parseInt (-> % .-target .-value)))}])
+          (row [:label "mismatch: " (:mismatch-score state)]
+               [:input.form-control
+                {:type "range" :min -10 :max 0 
+                 :value (:mismatch-score state)
+                 :on-change #(update-state! app-state :mismatch-score 
+                                          (js/parseInt (-> % .-target .-value)))}])])
 
-   [:div {:class "panel panel-primary"}
-    [:div.panel-heading "Alignment type"]
-    [:div.panel-body
-     [:div.btn-group { :field :single-select :id :alignment-type}
-      [:button.btn.btn-default {:key :global} "Needleman-Wunsch"]
-      [:button.btn.btn-default {:key :local} "Smith-Waterman"]]]]
-   
-   [:div {:class "panel panel-primary"}
-    [:div.panel-heading "Algorithm Parameters"]
-    [:div.panel-body 
+       (when (= :standard (:scoring-matrix-type state))
+         [:select.form-control {:value (:scoring-matrix state)
+                                :on-change #(update-state! app-state :scoring-matrix 
+                                                         (keyword (-> % .-target .-value)))}
+          (map (fn [[k v]] [:option {:key k :value k} (:name v)]) scoring-matrices)])
 
-     [:div.row 
-      [:div.col-md-4 {:vertical-align "middle"} [:label  "Scoring Matrix"]]
-      [:div.col-md-8
-       (radio "User-defined"  :scoring-matrix-type  :simple )
-       (radio "Standard" :scoring-matrix-type  :standard :checked true)]]
-
-     [:div.form-group {:field :container
-                       :visible? #(= :simple (:scoring-matrix-type %))}
-      (row [:label
-            {:field :label
-             :preamble "match: "
-             :id :match-score}]
-          [:input.form-control
-           {:field :range :min 0 :max 15 :id :match-score}]
-          )
-      (row [:label
-            {:field :label
-             :preamble "mismatch: "
-             :id :mismatch-score}]
-          [:input.form-control
-           {:field :range :min -10 :max 0 :id :mismatch-score}]
-          )]
-
-     [:select.form-control {:field :list
-                            :id :scoring-matrix
-                            :visible? #(= :standard (:scoring-matrix-type %))}
-      (map (fn [[k v]] [:option {:key k} (:name v)]) scoring-matrices)]
-
-     (row [:label
-           {:field :label
-            :preamble "Linear gap penalty: "
-            :placeholder "N/A"
-            :id :gap-penalty}]
-          [:input.form-control
-           {:field :range :min 0 :max 15 :id :gap-penalty}]
-          )
-     #_(row "Alignment algorithm" 
-          [:div.btn-group {:field :single-select :id :alignment-type}
-           [:button.btn.btn-default {:key :global} "Needleman-Wunsch"]
-           [:button.btn.btn-default {:key :local} "Smith-Waterman"]])]]])
-
+       (row [:label "Linear gap penalty: " (:gap-penalty state)]
+            [:input.form-control
+             {:type "range" :min 0 :max 15 
+              :value (:gap-penalty state)
+              :on-change #(update-state! app-state :gap-penalty 
+                                       (js/parseInt (-> % .-target .-value)))}])]]]))
 
 (defn display-alignment [{:keys [top bottom]}]
   ^{:key (swap! app-item-id inc)} [:p top [:br] bottom [:br] [:br]])
 
 (defn summarize-alignment [{:keys [sequence-type alignment-type result]}]
-  [:span (clojure.string/capitalize (name alignment-type)) " "
+  [:span (str/capitalize (name alignment-type)) " "
    (name sequence-type) " alignment score: "
    [:strong (:score result)]])
 
@@ -204,39 +208,29 @@
                          :match-score     5
                          :mismatch-score -3
                          })]
+    (swap! app-state assoc :result (app-results @app-state))
     (fn []
       [:div
        [:div.page-header [:h1.text-center "Optimal pairwise sequence alignment" ] ]
        
        [:div.row
         [:div {:class "col-md-4"}
-         [:div.row [bind-fields
-                    form-template
-                    app-state
-                    #_(fn [id value {:keys [top-seq]}]
-                      (if (re-matches #"^[ABCDEFGHIKLMNPQRSTVWXYZ]+$" top-seq)
-                        doc))
-                    (fn [[id] value {:keys [
-                                            bottom-seq
-                                            scoring-matrix
-                                            gap-penalty
-                                            alignment-type] :as doc}]
-                      (assoc-in doc [:result] (app-results doc)))]
-          [:div.row
-           (if (:result @app-state)
-             [:div {:class "panel panel-info"}
-              [:div.panel-heading {:class "text-center"} (summarize-alignment @app-state)]
-              [:div.panel-body
-               [:div.row 
-                [:pre  (map display-alignment (:alignments (:result @app-state)))]
-                ]
+         [:div.row [form-component app-state]]
+         [:div.row
+          (when (:result @app-state)
+            [:div {:class "panel panel-info"}
+             [:div.panel-heading {:class "text-center"} (summarize-alignment @app-state)]
+             [:div.panel-body
+              [:div.row 
+               [:pre  (map display-alignment (:alignments (:result @app-state)))]
                ]
-              ])
-           
-           ]]]
+              ]
+             ])
+          
+          ]]
         [:div {:class "col-md-8"}
          [:div.row
-          (if (:result @app-state)
+          (when (:result @app-state)
             [:div {:class "text-center" :margin-left "5%"}
              [:div.panel-heading [:h3 "Dynamic programming matrix visualisation"]
               "Paths for optimal alignments are indicated in red"
@@ -251,8 +245,8 @@
        ])))
 
 (defn init []
-  (reagent/render [page]
-                  (. js/document (getElementById "app"))))
+  (rdom/render [page]
+               (. js/document (getElementById "app"))))
 
 (defn ^:dev/after-load reload []
   (init))
