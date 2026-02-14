@@ -3,6 +3,7 @@
             [reagent.core :as reagent :refer (atom)]
             [reagent.dom :as rdom]
             [pairwise.linear :as linear]
+            [pairwise.matrix :as matrix]
             [pairwise.substitution :as sub]
             [pairwise.cljsmacros  :refer-macros [read-file]]))
 
@@ -24,6 +25,9 @@
 
 (defonce app-item-id (atom 0))
 
+(def cell-size 50)
+(def half-cell (/ cell-size 2))
+
 (defn app-results [app-state]
   (let [scoring-matrix (condp = (:scoring-matrix-type app-state)
                          :simple (sub/simple-substitution-matrix
@@ -38,55 +42,48 @@
                          :type (:alignment-type app-state))))
 
 (defn draw-arrow [app-state [r c] & {:keys [stroke stroke-width] :or {stroke "gray" stroke-width 2}}]
-  (let [x1 (+ 25 (* c 50))
-        y1 (+ 25 (* r 50))
-        from-seq (get-in app-state [:result :dp-matrix  r c :from])
-        xpos (fn [[_ c]] (+ 25 (* 50 c)))
-        ypos (fn [[r _]] (+ 25 (* 50 r)))
-        ]
-    (map  #(when-not (nil? %1)
-             [:line { :stroke stroke :stroke-width stroke-width :x1 x1 :x2 (xpos %1) :y1 y1
-                      :y2 (ypos %1)}])  from-seq)))
+  (let [x1 (+ half-cell (* c cell-size))
+        y1 (+ half-cell (* r cell-size))
+        from-seq (get-in app-state [:result :dp-matrix r c :from])
+        xpos (fn [[_ c]] (+ half-cell (* cell-size c)))
+        ypos (fn [[r _]] (+ half-cell (* cell-size r)))]
+    (map #(when-not (nil? %)
+            [:line {:stroke stroke :stroke-width stroke-width :x1 x1 :x2 (xpos %) :y1 y1
+                    :y2 (ypos %)}]) from-seq)))
 
 (defn draw-mask [_app-state [r c]]
-  (let [x1 (+ 25 (* c 50))
-        y1 (+ 25 (* r 50))]
+  (let [x1 (+ half-cell (* c cell-size))
+        y1 (+ half-cell (* r cell-size))]
     [:circle {:cx x1 :cy y1 :r 12 :fill "white"}]))
 
 (defn draw-cell [app-state [r c]]
-  (let [x (* c 50)
-        y (* r 50)
-        score (get-in app-state [:result :dp-matrix  r c :score])]
+  (let [x (* c cell-size)
+        y (* r cell-size)
+        score (get-in app-state [:result :dp-matrix r c :score])]
     [:g
-     [:rect {:x x :y y :width 50 :height 50 :fill "none" :stroke "gray" :stroke-width 0.2}]
-     [:text {:x (+ x  25) :y (+ y 25) :text-anchor "middle" :alignment-baseline "middle" :font-family "Verdana" :font-size "70%" :stroke "black"} score]
-     ]
-    ))
+     [:rect {:x x :y y :width cell-size :height cell-size :fill "none" :stroke "gray" :stroke-width 0.2}]
+     [:text {:x (+ x half-cell) :y (+ y half-cell) :text-anchor "middle" :alignment-baseline "middle" :font-family "Verdana" :font-size "70%" :stroke "black"} score]]))
 
 (defn draw-top-seq [app-state]
-  (let [draw-a-letter (fn [i x]  [:text {:x (+ 25 (* (inc i) 50)) :y -25 :font-size "150%" :text-anchor "middle" :alignment-baseline "middle"} x])]
+  (let [draw-a-letter (fn [i x] [:text {:x (+ half-cell (* (inc i) cell-size)) :y (- half-cell) :font-size "150%" :text-anchor "middle" :alignment-baseline "middle"} x])]
     (map-indexed draw-a-letter (seq (:top-seq app-state)))))
 
 (defn draw-left-seq [app-state]
   (let [draw-a-letter (fn [i x]
-                        [:text {:y (+ 25 (* (inc i) 50)) :x -25 :font-size "150%" :text-anchor "middle" :alignment-baseline "middle"} x])]
+                        [:text {:y (+ half-cell (* (inc i) cell-size)) :x (- half-cell) :font-size "150%" :text-anchor "middle" :alignment-baseline "middle"} x])]
     (map-indexed draw-a-letter (seq (:bottom-seq app-state)))))
 
 (defn svg-component [ app-state & _args ]
-  (let [ij      (for [cols (range (count (get-in app-state [:result :dp-matrix 0])))
-                      rows (range (count (get-in app-state [:result :dp-matrix])))]
-                  [rows cols])
-        cols (count (get-in app-state [:result :dp-matrix 0]))
-        rows (count (get-in app-state [:result :dp-matrix]))
-        draw-opt (fn [paths] (map #(draw-arrow app-state %1 :stroke "red" :stroke-width 4) paths))
-        ]
-      [:svg {:width   "80%"; (str (* cols 50)) 
-             :height  "50%";(str (* rows 50))
-             :viewBox (print-str -50 -50 (str (* (inc  cols) 50)) (str (* (inc  rows) 50)))
+  (let [dp-matrix (get-in app-state [:result :dp-matrix])
+        ij        (matrix/cell-coordinates dp-matrix)
+        [rows cols] (matrix/matrix-dimensions dp-matrix)
+        draw-opt (fn [paths] (map #(draw-arrow app-state % :stroke "red" :stroke-width 4) paths))]
+      [:svg {:width   "80%"
+             :height  "50%"
+             :viewBox (print-str (- cell-size) (- cell-size) (str (* (inc cols) cell-size)) (str (* (inc rows) cell-size)))
          :id    "canvas"
-         :style {;:outline          "1px solid black"
-                 :background-color "#fff"}}
-       [:rect {:x 0 :y 0 :width (* 50 cols) :height (*  50 rows) :fill "none" :stroke "black" :stroke-width 1}]
+         :style {:background-color "#fff"}}
+       [:rect {:x 0 :y 0 :width (* cell-size cols) :height (* cell-size rows) :fill "none" :stroke "black" :stroke-width 1}]
        (map (partial draw-arrow app-state) ij)
        (map draw-opt (:optimal-paths (:result app-state)))
        (map (partial draw-mask app-state) ij)
