@@ -1,108 +1,49 @@
 (ns pairwise.linear-test
   (:require [clojure.test :refer :all]
             [pairwise.linear :refer :all]
-            [clojure.string :as str]
-            [clojure.pprint :as pprint]
-            [clojure.walk :as w]
-            ;;            [clojure.spec.alpha :as s]
-            ;;            [clojure.spec.gen.alpha :as gen]
             [pairwise.substitution :as sub]))
 
+(def blosum50 (sub/read-scoring-matrix (slurp "resources/data/BLOSUM50.txt")))
 
-#_(gen/sample (s/gen :pairwise.linear/dna-input) 30)
+(deftest global-alignment-blosum50
+  (testing "HEAGAWGHEE vs PAWHEAE with BLOSUM50 produces known result"
+    (let [result (pairwise-align "HEAGAWGHEE" "PAWHEAE" blosum50 8 :type :global)]
+      (is (= 1 (:score result)))
+      (is (pos? (count (:alignments result))))
+      (is (every? #(and (contains? % :top) (contains? % :bottom))
+                  (:alignments result))))))
 
+(deftest local-alignment-blosum50
+  (testing "Local alignment returns positive score"
+    (let [result (pairwise-align "HEAGAWGHEE" "PAWHEAE" blosum50 8 :type :local)]
+      (is (pos? (:score result)))
+      (is (pos? (count (:alignments result)))))))
 
+(deftest alignment-result-structure
+  (testing "pairwise-align returns all expected keys"
+    (let [S (sub/simple-substitution-matrix :protein :same 5 :different -3)
+          result (pairwise-align "SIMILAR" "SIMMARE" S 3 :type :global)]
+      (is (contains? result :score))
+      (is (contains? result :alignments))
+      (is (contains? result :dp-matrix))
+      (is (contains? result :optimal-paths))
+      (is (contains? result :sequence-1))
+      (is (contains? result :sequence-2))
+      (is (= "SIMILAR" (:sequence-1 result)))
+      (is (= "SIMMARE" (:sequence-2 result))))))
 
+(deftest path-to-alignment-test
+  (testing "A simple path produces a valid alignment"
+    (let [S (sub/simple-substitution-matrix :dna :same 1 :different -1)
+          result (pairwise-align "AC" "AC" S 1 :type :global)
+          aln (first (:alignments result))]
+      (is (= "AC" (:top aln)))
+      (is (= "AC" (:bottom aln))))))
 
-(def s1 "CC")
-(def s2 "CCA")
-(let [D (initialise-D s1 s2)
-      S (sub/simple-substitution-matrix :dna )
-      gap-penalty 1]
-  (build-dp-matrix S gap-penalty s1 s2 :type :global))
-
-(let [s1 "CCAAT"
-      s2 "CCAAC"
-      ]
-        (substitution-type s1 s2 0 0)
-)
-
-
-(let [S            (sub/simple-substitution-matrix :protein :same 5 :different -3)
-      s1           "SIMILAR"
-      s2           "SIMMARE"
-      gap-penalty  3
-      type         :local
-      D            (build-dp-matrix S gap-penalty s1 s2 :type type)
-      ]
-   (:alignments (pairwise-align s1 s2 S gap-penalty :type type)))
-
-
-(let [S  (sub/simple-substitution-matrix :protein :same 5 :different -2)
-      s1 "GACCAG"
-      s2 "CATTCG"
-      d 3
-      ]
-  S)
-
-(let [S  (sub/read-scoring-matrix (slurp "resources/data/BLOSUM50.txt"))
-      s2 "PAWHEAEH"
-      s1 "HEAGAWGHEE"
-      d 8
-      ]
-  (pprint/pprint (:optimal-paths (pairwise-align s1 s2 S d :type :global)))
-  )
-
-(defn when-visible
-  "path: a path representing an optimal alignment
-  starting-point: the step of the last cell of the DP matrix
-  yield: a new set of time point"
-  [path starting-point]
-;  () (map inc (range  (count path)))
-  (->> path
-      count
-      range
-      (map + (repeat (count path) (+ 1 starting-point)))
-      ))
-
-(let [path [[9 8] [9 7] [8 7] [7 6]]
-      starting-point 100
-      ]
-    (when-visible path starting-point)
-    )
-
-
-(repeat  3 10)
-
-
-(let [S  (sub/read-scoring-matrix (slurp "resources/data/BLOSUM50.txt"))
-      s1 "HEAGAWGHEE"
-      s2 "PAWHEAE"
-      d 8
-      ]
-  (map #(map inc %) (map range (map count (:optimal-paths (pairwise-align s1 s2 S d :type :global))))))
-
-
-
-
-(let [S  (sub/read-scoring-matrix (slurp "resources/data/BLOSUM50.txt"))
-      s1 "SIMILAR"
-      s2 "SIMMARE"
-      d 8
-      A (pairwise-align s1 s2 S d :type :global)
-      ]
-  (map #(+ 2 %) (range 1 (inc (apply max (map count (:optimal-paths A))))))
-  )
-
-(map #(+ 2 %) (range 10))
-
-
-(let [S  (sub/read-scoring-matrix (slurp "resources/data/BLOSUM50.txt"))
-      s1 "HEAGAWGHEE"
-      s2 "PAWHEAE"
-      d 8
-      ]
-  (pprint/pprint (:dp-matrix (pairwise-align s1 s2 S d :type :global)))
-)
-
-
+(deftest findpaths-returns-paths
+  (testing "findpaths returns at least one path for a valid alignment"
+    (let [S (sub/simple-substitution-matrix :dna :same 1 :different -1)
+          D (build-dp-matrix S 1 "AC" "AC" :type :global)
+          paths (findpaths D :global)]
+      (is (seq paths))
+      (is (every? vector? paths)))))

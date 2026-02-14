@@ -29,7 +29,7 @@
     :parse-fn #(Integer/parseInt %)
     :id :gap-penalty]
    ["-t" "--type TYPE" "Alignment type: global or local"
-    :default "global"
+    :default :global
     :parse-fn keyword
     :validate [#(contains? #{:global :local} %) "Must be 'global' or 'local'"]
     :id :type]
