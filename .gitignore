@@ -31,9 +31,23 @@ Thumbs.db
 
 # Editor
 .vscode/
+.lsp/
+.claude/settings.local.json
 *.swp
 *.swo
 *~
 
 # Build artifacts
 *.log
+
+# LaTeX - ignore everything in resources/tikz except source templates
+resources/tikz/*
+!resources/tikz/header.tex
+!resources/tikz/footer.tex
+
+# LaTeX compilation artifacts
+*.aux
+*.nav
+*.snm
+*.toc
+*.dvi
