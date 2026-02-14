@@ -20,6 +20,8 @@
                       io.github.cognitect-labs/test-runner {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
          :main-opts ["-m" "cognitect.test-runner"]
          :exec-fn cognitect.test-runner.api/test}
+  :build {:deps {io.github.clojure/tools.build {:git/tag "v0.10.11" :git/sha "c6c670a"}}
+          :ns-default build}
 
   :repl {:extra-deps {nrepl/nrepl {:mvn/version "1.1.0"}
                       cider/cider-nrepl {:mvn/version "0.47.1"}}

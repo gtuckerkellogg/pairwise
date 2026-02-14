@@ -2,10 +2,16 @@
   (:require [pairwise.linear :as pairwise]
             [pairwise.substitution :refer :all]
             [clojure.walk :as w]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [clojure.java.io :as io]))
 
 
-(def header (slurp "resources/tikz/header.tex"))
+(defn load-header []
+  (if-let [resource (io/resource "tikz/header.tex")]
+    (slurp resource)
+    (throw (Exception. "Could not find tikz/header.tex resource"))))
+
+(def header (load-header))
 
 (defn- scores [D]
   (w/prewalk #(:score %1) D))
@@ -103,53 +109,4 @@
               )))
 
 
-(let [S  (read-scoring-matrix (slurp "resources/data/BLOSUM50.txt"))
-      s1 "HEAGAWGHEE"
-      s2 "PAWHEAE"
-      d 8
-      result (pairwise/pairwise-align s1 s2 S d :type :global)]
-  (spit "resources/tikz/book.tex" (tikz-alignment result))
-  )
 
-
-
-(let [S  (read-scoring-matrix (slurp "resources/data/BLOSUM50.txt"))
-      s1 "HEAGAWGHEE"
-      s2 "PAWHEE"
-      d 8
-      ]
-  (count (flatten (:optimal-path-steps (pairwise/pairwise-align s1 s2 S d :type :global))))
-  )
-
-(let [S  (read-scoring-matrix (slurp "resources/data/BLOSUM50.txt"))
-      s1 "HEAGAWGHEE"
-      s2 "PAWHEE"
-      d 8
-      ]
-  (pairwise/pairwise-align s1 s2 S d :type :global)
-  )
-
-
-(let [S  (simple-substitution-matrix :protein :same 5 :different -5)
-      s1 "SIMILAR"
-      s2 "SIMMARE"
-      d 3
-      result (pairwise/pairwise-align s1 s2 S d :type :global)]
-  (spit "resources/tikz/similar.tex" (tikz-alignment result))
-  )
-
-(let [S  (simple-substitution-matrix :protein :same 5 :different -5)
-      s1 "SIMILAR"
-      s2 "SIMMARE"
-      d 3
-      result (pairwise/pairwise-align s1 s2 S d :type :local)]
-  (spit "resources/tikz/similar-local.tex" (tikz-alignment result))
-  )
-
-(let [S  (simple-substitution-matrix :protein :same 5 :different -5)
-      s1 "SIMILAR"
-      s2 "SIMMARE"
-      d 3
-      result (pairwise/pairwise-align s1 s2 S d :type :global)]
-    (:alignments (pairwise/pairwise-align s1 s2 S d :type :local))
-  )
