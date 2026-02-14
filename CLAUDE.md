@@ -19,6 +19,11 @@ This is a Clojure/ClojureScript library for pairwise sequence comparison using d
 - Production build: `npm run build`
 - Run tests: `npm test` or `clojure -M:test`
 
+### Installing the CLI
+- Install to `~/bin`: `clojure -T:build install`
+- This builds the uber JAR, copies it to `~/bin/pairwise.jar`, and creates a `~/bin/pairwise` wrapper script
+- After install: `pairwise -1 HEAGAWGHEE -2 PAWHEAE -m BLOSUM50 -g 8`
+
 ### Shadow-CLJS Development
 - Development server runs at `http://localhost:3000`
 - Shadow-CLJS provides live code reloading for ClojureScript
@@ -31,7 +36,7 @@ This is a Clojure/ClojureScript library for pairwise sequence comparison using d
 - **pairwise.linear**: Core dynamic programming algorithms for sequence alignment
 - **pairwise.substitution**: Scoring matrix utilities and sequence validation
 - **pairwise.webapp**: Reagent-based web interface
-- **pairwise.main**: Command-line interface (incomplete)
+- **pairwise.main**: Command-line interface
 
 ### Key Components
 - **Dynamic Programming Matrix**: Built using `build-dp-matrix` with configurable scoring matrices
