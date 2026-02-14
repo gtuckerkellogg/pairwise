@@ -32,17 +32,9 @@
 ;; Shared functions — algorithm-independent
 ;; ---------------------------------------------------------------------------
 
-(defn get-goalfn
+(defmulti get-goalfn
   "Return a function that returns true if reached the goal cell."
-  [gap-model D type]
-  (let [goal (set
-              (cond (= type :global)
-                    '([0 0])
-                    (= type :local)
-                    (keys (filter #(zero? (:score (second %))) (graph-of gap-model D)))
-                    (= type :semiglobal)
-                    (filter #(or (zero? (first %)) (zero? (second %))) (keys (graph-of gap-model D)))))]
-    #(contains? goal %)))
+  (fn [gap-model _D _type] gap-model))
 
 (defn dfs
   [graph met-goal?]

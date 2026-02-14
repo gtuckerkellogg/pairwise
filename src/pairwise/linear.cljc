@@ -129,6 +129,17 @@
              [rows cols])]
     (into {} (map (fn [idx] {idx (get-in D idx)}) (reverse ij)))))
 
+(defmethod alignment/get-goalfn :linear
+  [gap-model D type]
+  (let [goal (set
+              (cond (= type :global)
+                    '([0 0])
+                    (= type :local)
+                    (keys (filter #(zero? (:score (second %))) (alignment/graph-of gap-model D)))
+                    (= type :semiglobal)
+                    (filter #(or (zero? (first %)) (zero? (second %))) (keys (alignment/graph-of gap-model D)))))]
+    #(contains? goal %)))
+
 ;; ---------------------------------------------------------------------------
 ;; Backward-compatible wrappers
 ;; ---------------------------------------------------------------------------

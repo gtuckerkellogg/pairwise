@@ -1,6 +1,7 @@
 (ns pairwise.main
   (:require [pairwise.alignment :as pairwise]
-            [pairwise.linear]  ; registers :linear multimethod implementations
+            [pairwise.linear]   ; registers :linear multimethod implementations
+            [pairwise.affine]   ; registers :affine multimethod implementations
             [pairwise.substitution :as sub]
             [pairwise.tikz-view :as tikz]
             [clojure.walk :as w]
@@ -25,10 +26,23 @@
     :default -2
     :parse-fn #(Integer/parseInt %)
     :id :mismatch]
-   ["-g" "--gap-penalty PENALTY" "Gap penalty"
+   ["-g" "--gap-penalty PENALTY" "Gap penalty (linear model)"
     :default 2
     :parse-fn #(Integer/parseInt %)
     :id :gap-penalty]
+   [nil "--gap-model MODEL" "Gap model: linear or affine"
+    :default :linear
+    :parse-fn keyword
+    :validate [#(contains? #{:linear :affine} %) "Must be 'linear' or 'affine'"]
+    :id :gap-model]
+   [nil "--gap-open PENALTY" "Gap opening penalty (affine model)"
+    :default 10
+    :parse-fn #(Integer/parseInt %)
+    :id :gap-open]
+   [nil "--gap-extend PENALTY" "Gap extension penalty (affine model)"
+    :default 1
+    :parse-fn #(Integer/parseInt %)
+    :id :gap-extend]
    ["-t" "--type TYPE" "Alignment type: global or local"
     :default :global
     :parse-fn keyword
@@ -79,6 +93,9 @@
         (println "  # Local alignment with BLOSUM62")
         (println "  pairwise -1 HEAGAWGHEE -2 PAWHEAE -t local -m BLOSUM62")
         (println)
+        (println "  # Affine gap alignment with BLOSUM50")
+        (println "  pairwise -1 HEAGAWGHEE -2 PAWHEAE -m BLOSUM50 --gap-model affine --gap-open 12 --gap-extend 2")
+        (println)
         (println "  # Generate TikZ/LaTeX visualization")
         (println "  pairwise -1 ACGT -2 ACGT -o alignment.tex")
         (System/exit 0))
@@ -98,11 +115,15 @@
 
       :else
       (try
-        (let [{:keys [s1 s2 matrix match mismatch gap-penalty type output]} options
+        (let [{:keys [s1 s2 matrix match mismatch gap-penalty gap-model gap-open gap-extend type output]} options
               s1-clean (sub/sanitise s1)
               s2-clean (sub/sanitise s2)
               scoring-matrix (load-scoring-matrix matrix match mismatch)
-              result (pairwise/pairwise-align s1-clean s2-clean scoring-matrix gap-penalty :type type)]
+              gap-pen (if (= gap-model :affine)
+                        {:d gap-open :e gap-extend}
+                        gap-penalty)
+              result (pairwise/pairwise-align s1-clean s2-clean scoring-matrix gap-pen
+                       :type type :gap-model gap-model)]
 
           (if output
             ;; TikZ output mode
@@ -128,7 +149,11 @@
               (when (= matrix "simple")
                 (println "  Match:" match)
                 (println "  Mismatch:" mismatch))
-              (println "  Gap penalty:" gap-penalty)
+              (println "  Gap model:" (name gap-model))
+              (if (= gap-model :affine)
+                (do (println "  Gap open:" gap-open)
+                    (println "  Gap extend:" gap-extend))
+                (println "  Gap penalty:" gap-penalty))
               (println "  Alignment type:" (name type))
               (println)
               (println (format-alignment result))
