@@ -1,5 +1,8 @@
 (ns build
-  (:require [clojure.tools.build.api :as b]))
+  (:require [clojure.tools.build.api :as b]
+            [clojure.java.io :as io])
+  (:import [java.nio.file Files]
+           [java.nio.file.attribute PosixFilePermissions]))
 
 (def lib 'pairwise/pairwise)
 (def version "0.1.0")
@@ -34,3 +37,28 @@
            :uber-file uber-file
            :basis basis
            :main 'pairwise.main}))
+
+(defn install
+  "Install pairwise CLI to ~/bin"
+  [_]
+  (uber nil)
+  (let [home     (System/getProperty "user.home")
+        bin-dir  (io/file home "bin")
+        jar-dest (io/file bin-dir "pairwise.jar")
+        wrapper  (io/file bin-dir "pairwise")]
+    (.mkdirs bin-dir)
+    (io/copy (io/file uber-file) jar-dest)
+    (spit wrapper (str "#!/usr/bin/env bash\n"
+                       "exec java -jar \"" (.getAbsolutePath jar-dest) "\" \"$@\"\n"))
+    (Files/setPosixFilePermissions (.toPath wrapper)
+                                   (PosixFilePermissions/fromString "rwxr-xr-x"))
+    (println "Installed to" (.getAbsolutePath bin-dir))
+    (println "  " (.getAbsolutePath jar-dest))
+    (println "  " (.getAbsolutePath wrapper))
+    (let [path (System/getenv "PATH")]
+      (when-not (some #(= (.getAbsolutePath bin-dir) %)
+                      (clojure.string/split path (re-pattern (System/getProperty "path.separator"))))
+        (println)
+        (println "NOTE:" (.getAbsolutePath bin-dir) "is not on your PATH.")
+        (println "Add this to your shell profile:")
+        (println (str "  export PATH=\"" (.getAbsolutePath bin-dir) ":$PATH\""))))))

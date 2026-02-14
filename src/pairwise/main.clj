@@ -73,13 +73,13 @@
         (println)
         (println "Examples:")
         (println "  # Global alignment with simple matrix")
-        (println "  java -jar pairwise.jar -1 HEAGAWGHEE -2 PAWHEAE")
+        (println "  pairwise -1 HEAGAWGHEE -2 PAWHEAE")
         (println)
         (println "  # Local alignment with BLOSUM62")
-        (println "  java -jar pairwise.jar -1 HEAGAWGHEE -2 PAWHEAE -t local -m BLOSUM62")
+        (println "  pairwise -1 HEAGAWGHEE -2 PAWHEAE -t local -m BLOSUM62")
         (println)
         (println "  # Generate TikZ/LaTeX visualization")
-        (println "  java -jar pairwise.jar -1 ACGT -2 ACGT -o alignment.tex")
+        (println "  pairwise -1 ACGT -2 ACGT -o alignment.tex")
         (System/exit 0))
 
       errors
