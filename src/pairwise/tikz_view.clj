@@ -1,5 +1,6 @@
 (ns pairwise.tikz-view
-  (:require [pairwise.linear :as pairwise]
+  (:require [pairwise.alignment :as pairwise]
+            [pairwise.linear]  ; registers :linear multimethod implementations
             [pairwise.matrix :as matrix]
             [pairwise.substitution :refer :all]
             [clojure.string :as str]

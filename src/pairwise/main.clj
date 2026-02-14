@@ -1,5 +1,6 @@
 (ns pairwise.main
-  (:require [pairwise.linear :as pairwise]
+  (:require [pairwise.alignment :as pairwise]
+            [pairwise.linear]  ; registers :linear multimethod implementations
             [pairwise.substitution :as sub]
             [pairwise.tikz-view :as tikz]
             [clojure.walk :as w]

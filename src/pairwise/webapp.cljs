@@ -2,7 +2,8 @@
   (:require [clojure.string :as str]
             [reagent.core :as reagent :refer (atom)]
             [reagent.dom :as rdom]
-            [pairwise.linear :as linear]
+            [pairwise.alignment :as alignment]
+            [pairwise.linear]  ; registers :linear multimethod implementations
             [pairwise.matrix :as matrix]
             [pairwise.substitution :as sub]
             [pairwise.cljsmacros  :refer-macros [read-file]]))
@@ -35,7 +36,7 @@
                                   :same (:match-score app-state)
                                   :different (:mismatch-score app-state))
                          :standard (get-in scoring-matrices [(:scoring-matrix app-state) :matrix]))]
-  (linear/pairwise-align (:top-seq app-state)
+  (alignment/pairwise-align (:top-seq app-state)
                          (:bottom-seq app-state)
                          scoring-matrix
                          (:gap-penalty app-state)
