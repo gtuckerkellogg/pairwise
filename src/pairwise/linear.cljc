@@ -65,34 +65,35 @@
      }))
 
 
+(defn- select-best-scores
+  "Given candidate score maps, return the max score and all tied sources.
+   For local alignment, normalizes zero-score candidates to {:score 0 :from nil}."
+  [candidates type]
+  (let [valid     (filter has-score? (remove nil? candidates))
+        max-score (:score (apply max-key :score valid))
+        with-zero (if (= type :local)
+                    (map #(if (zero? (:score %)) {:score 0 :from nil} %) valid)
+                    valid)
+        sources   (distinct (filter #(= (:score %) max-score) with-zero))]
+    {:max-score max-score
+     :sources   sources}))
+
 (defn score-cell
   "score a cell"
   [D S gap-penalty s1 s2 row col & {:keys [type]}]
-  (let [L1        (get (vec (seq s1)) (dec col)) 
-        L2        (get (vec (seq s2)) (dec row))
-        cols      (inc (count s1))
-        step      (+ col (* row cols))
-        s         (get S [L1 L2])
-        score-vec (remove nil?
-                          [(substitution-score D row col s)
-                           (score-horizontal-gap D row col gap-penalty)
-                           (score-vertical-gap D row col gap-penalty)
-                           (when (= type :local) {:score 0 :from nil})])
-        score-vec (filter has-score? score-vec)
-        max-score (:score (apply max-key :score score-vec))
-        score-vec (if (= type :local)
-                    (map #(if (zero? (:score %1)) {:score 0 :from nil} %1) score-vec)
-                    score-vec)
-        score-vec (distinct (filter #(= (:score %1) max-score) score-vec))
-        direction (map :direction score-vec)
-        diag? (some #(= :diag %) direction)
-        ]
-    (assoc-in D [row col ] {:score max-score
-                            :substitution-type (if diag? (substitution-type s1 s2 col row) nil)
-                            :from  (map :from score-vec)
-                            :direction direction
-                            :step step
-                            })))
+  (let [s          (get S [(get s1 (dec col)) (get s2 (dec row))])
+        candidates [(substitution-score D row col s)
+                    (score-horizontal-gap D row col gap-penalty)
+                    (score-vertical-gap D row col gap-penalty)
+                    (when (= type :local) {:score 0 :from nil})]
+        {:keys [max-score sources]} (select-best-scores candidates type)
+        directions (map :direction sources)]
+    (assoc-in D [row col]
+              {:score             max-score
+               :substitution-type (when (some #{:diag} directions)
+                                    (substitution-type s1 s2 col row))
+               :from              (map :from sources)
+               :direction         directions})))
 
 
 (defn build-dp-matrix 
@@ -123,7 +124,7 @@
                     (keys (filter  #(zero? (:score (second %))) (graph-of D)))
                     (= type :semiglobal)
                     (filter #(or (zero? (first %)) (zero? (second %))) (keys (graph-of D)))))]
-    #(contains? goal %1)))
+    #(contains? goal %)))
 
 
 (defn alignment-score 
@@ -131,13 +132,13 @@
   [D type]
   (cond (= type :global) (get-in D [(dec (count D))
                                     (dec (count (first D))) :score])
-        (= type :local) (apply max (flatten (map #(map :score %1) D)))))
+        (= type :local) (apply max (flatten (map #(map :score %) D)))))
 
 
 (defn get-starting [D type]
   (cond (= type :global) (list [(dec (count D))
                                 (dec (count (first D)))])
-        (= type :local)  (let [top-score (apply max (flatten (map #(map :score %1) D)))
+        (= type :local)  (let [top-score (apply max (flatten (map #(map :score %) D)))
                                starting  (for [r (range (count D))
                                                c (range (count (first D)))]
                                            (when (= top-score (get-in D [r c :score]))
@@ -163,11 +164,10 @@
         start-cells (get-starting D type)
         graph       (graph-of D)
         search      (dfs graph met-goal?)
-        start-cell (first start-cells)
-        all-paths (mapcat  #(search [%1] #{%1}) start-cells)
+        all-paths (mapcat #(search [%1] #{%1}) start-cells)
         internal-cells (set (apply concat (map rest all-paths)))
         ]
-    (filter #((complement contains?) internal-cells (first %)) all-paths)))
+    (remove #(contains? internal-cells (first %)) all-paths)))
 
 
 (defn path-to-alignment
