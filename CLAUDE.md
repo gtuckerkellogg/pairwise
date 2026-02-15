@@ -66,7 +66,7 @@ This is a Clojure/ClojureScript library for pairwise sequence comparison using d
 
 ### Gap Models
 - `:linear`: Gap of length k costs k*d (single penalty parameter)
-- `:affine`: Gap of length k costs d + (k-1)*e (Durbin et al. convention; opening penalty d, extension penalty e). Uses Gotoh's three-state recurrence with state-expanded traceback graph (`[row col :M/:X/:Y]` nodes)
+- `:affine`: Gap of length k costs d + (k-1)*e (Durbin et al. convention; opening penalty d, extension penalty e). Uses the three-state recurrence (V'M, V'X, V'Y) with per-state traceback and a state-expanded graph (`[row col :M/:X/:Y]` nodes). This is equivalent to the SS-2 algorithm of Altschul and Erickson (1986), which correctly finds all optimal alignments — unlike Gotoh's original (1982) algorithm, which can miss the optimum due to incomplete traceback information
 
 ### Sequence Validation
 - Input sequences are sanitized to valid protein characters
