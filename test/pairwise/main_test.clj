@@ -33,11 +33,11 @@
       (is (seq errors)))))
 
 (deftest parses-numeric-options
-  (testing "Numeric options are parsed as integers"
+  (testing "Numeric options are parsed as numbers"
     (let [{:keys [options]} (parse-opts ["--match" "5" "--mismatch" "-3" "-g" "8"] cli-options)]
-      (is (= 5 (:match options)))
-      (is (= -3 (:mismatch options)))
-      (is (= 8 (:gap-penalty options))))))
+      (is (== 5 (:match options)))
+      (is (== -3 (:mismatch options)))
+      (is (== 8 (:gap-penalty options))))))
 
 (deftest default-values
   (testing "Default values are correct"
@@ -100,7 +100,7 @@
           s2-clean (sub/sanitise s2)
           scoring-matrix (load-scoring-matrix matrix match mismatch)
           result (pairwise/pairwise-align s1-clean s2-clean scoring-matrix gap-penalty :type type)]
-      (is (= 14 (:score result)))
+      (is (== 14 (:score result)))
       (is (= 2 (count (:alignments result)))))))
 
 (deftest end-to-end-local-alignment

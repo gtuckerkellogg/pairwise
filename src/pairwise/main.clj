@@ -20,15 +20,15 @@
     :id :matrix]
    [nil "--match SCORE" "Match score for simple matrix"
     :default 1
-    :parse-fn #(Integer/parseInt %)
+    :parse-fn #(Double/parseDouble %)
     :id :match]
    [nil "--mismatch SCORE" "Mismatch score for simple matrix"
     :default -2
-    :parse-fn #(Integer/parseInt %)
+    :parse-fn #(Double/parseDouble %)
     :id :mismatch]
    ["-g" "--gap-penalty PENALTY" "Gap penalty (linear model)"
     :default 2
-    :parse-fn #(Integer/parseInt %)
+    :parse-fn #(Double/parseDouble %)
     :id :gap-penalty]
    [nil "--gap-model MODEL" "Gap model: linear or affine"
     :default :linear
@@ -37,11 +37,11 @@
     :id :gap-model]
    [nil "--gap-open PENALTY" "Gap opening penalty (affine model)"
     :default 10
-    :parse-fn #(Integer/parseInt %)
+    :parse-fn #(Double/parseDouble %)
     :id :gap-open]
    [nil "--gap-extend PENALTY" "Gap extension penalty (affine model)"
     :default 1
-    :parse-fn #(Integer/parseInt %)
+    :parse-fn #(Double/parseDouble %)
     :id :gap-extend]
    ["-t" "--type TYPE" "Alignment type: global or local"
     :default :global
