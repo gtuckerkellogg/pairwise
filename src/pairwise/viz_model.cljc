@@ -23,6 +23,20 @@
     {:type :cell-score :row r :col c :score score
      :step (cell-step num-cols [r c])}))
 
+(defn- state-scores
+  "Generate :state-scores instructions from an affine DP matrix.
+   Only emitted when cells have :vm/:vx/:vy keys."
+  [D num-cols]
+  (for [[r c] (matrix/cell-coordinates D)
+        :let [cell (get-in D [r c])]
+        :when (contains? cell :vm)]
+    {:type :state-scores
+     :row r :col c
+     :vm (:vm cell)
+     :vx (:vx cell)
+     :vy (:vy cell)
+     :step (cell-step num-cols [r c])}))
+
 (defn- dp-arrows
   "Generate :dp-arrow instructions from the DP matrix :from/:direction fields."
   [D num-cols]
@@ -80,5 +94,6 @@
            [{:type :grid :rows rows :cols cols}]
            (seq-labels s1 s2)
            (cell-scores D cols)
+           (state-scores D cols)
            (dp-arrows D cols)
            (path-arrows result)))}))

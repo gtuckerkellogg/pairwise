@@ -138,6 +138,34 @@
       (is (every? #{:diag :horiz :vert} (map :direction arrows))))))
 
 ;; ---------------------------------------------------------------------------
+;; Affine state-scores
+;; ---------------------------------------------------------------------------
+
+(def small-affine-result
+  (alignment/pairwise-align "ACG" "AG" blosum50 {:d 12 :e 2}
+                            :type :global :gap-model :affine))
+
+(deftest affine-produces-state-scores
+  (testing "Affine alignment produces :state-scores instructions"
+    (let [model (viz/alignment->instructions small-affine-result)
+          state-scores (instructions-of-type model :state-scores)]
+      ;; 3x4 matrix = 12 cells; origin has vm=0, others may have nil :score
+      ;; but all cells with a non-nil :score should get a :state-scores instruction
+      (is (pos? (count state-scores)))
+      ;; Each state-scores has :vm, :vx, :vy keys (values may be nil)
+      (is (every? #(and (contains? % :vm) (contains? % :vx) (contains? % :vy)) state-scores))
+      ;; Check a specific cell: [1,1] should have vm=5, vx=nil, vy=nil
+      (let [cell-1-1 (first (filter #(and (= 1 (:row %)) (= 1 (:col %))) state-scores))]
+        (is (= 5 (:vm cell-1-1)))
+        (is (nil? (:vx cell-1-1)))
+        (is (nil? (:vy cell-1-1)))))))
+
+(deftest linear-produces-no-state-scores
+  (testing "Linear alignment does NOT produce :state-scores instructions"
+    (let [model (viz/alignment->instructions ac-result)]
+      (is (empty? (instructions-of-type model :state-scores))))))
+
+;; ---------------------------------------------------------------------------
 ;; Affine compatibility
 ;; ---------------------------------------------------------------------------
 
