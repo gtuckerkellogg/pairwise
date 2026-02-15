@@ -89,6 +89,67 @@
   nil)
 
 ;; ---------------------------------------------------------------------------
+;; Affine SVG renderers (called directly with extra args)
+;; ---------------------------------------------------------------------------
+
+(def ^:private affine-cell-size 80)
+
+(defn- state-offset
+  "Sub-region pixel offset within a cell for the given state."
+  [state cs]
+  (let [quarter (/ cs 4)]
+    (case state
+      :X [quarter (- quarter)]
+      :M [0 0]
+      :Y [(- quarter) quarter])))
+
+(def ^:private state-color {:M "#4477AA" :X "#228833" :Y "#CC6633"})
+
+(defn- render-state-scores [{:keys [row col vm vx vy]} cs active-state]
+  (let [cx (+ (/ cs 2) (* col cs))
+        cy (+ (/ cs 2) (* row cs))
+        quarter (/ cs 4)
+        opacity (fn [state] (if (or (= active-state :all) (= active-state state)) 1.0 0.3))
+        draw-val (fn [val state dx dy]
+                   (when (some? val)
+                     [:text {:x (+ cx dx) :y (+ cy dy)
+                             :text-anchor "middle" :alignment-baseline "middle"
+                             :font-family "Verdana" :font-size "55%"
+                             :opacity (opacity state)} val]))]
+    [:g
+     [:rect {:x (* col cs) :y (* row cs) :width cs :height cs
+             :fill "none" :stroke "gray" :stroke-width 0.2}]
+     (draw-val vx :X quarter (- quarter))
+     (draw-val vm :M 0 0)
+     (draw-val vy :Y (- quarter) quarter)]))
+
+(defn- render-state-arrow [{:keys [from-row from-col from-state
+                                    to-row to-col to-state
+                                    arrow-type]} cs active-state]
+  (let [[fdx fdy] (state-offset from-state cs)
+        [tdx tdy] (state-offset to-state cs)
+        half (/ cs 2)
+        x1 (+ half (* from-col cs) fdx)
+        y1 (+ half (* from-row cs) fdy)
+        x2 (+ half (* to-col cs) tdx)
+        y2 (+ half (* to-row cs) tdy)
+        base-color (state-color from-state)
+        opacity (if (or (= active-state :all) (= active-state from-state)) 1.0 0.15)
+        width (if (= arrow-type :optimal) 3 1.5)]
+    [:line {:stroke base-color :stroke-width width :opacity opacity
+            :x1 x1 :x2 x2 :y1 y1 :y2 y2}]))
+
+;; ---------------------------------------------------------------------------
+;; Affine seq-label renderer (uses larger cell size)
+;; ---------------------------------------------------------------------------
+
+(defn- render-seq-label-with-cs [{:keys [axis index char]} cs]
+  (let [half (/ cs 2)]
+    (case axis
+      :top  [:text {:x (+ half (* (inc index) cs)) :y (- half) :font-size "150%" :text-anchor "middle" :alignment-baseline "middle"} char]
+      :left [:text {:y (+ half (* (inc index) cs)) :x (- half) :font-size "150%" :text-anchor "middle" :alignment-baseline "middle"} char])))
+
+;; ---------------------------------------------------------------------------
 ;; SVG component — renders IR in correct visual layer order
 ;; ---------------------------------------------------------------------------
 
@@ -96,17 +157,26 @@
   (let [model (viz/alignment->instructions (:result app-state))
         {:keys [rows cols]} (:dimensions model)
         instructions (:instructions model)
-        by-type (group-by :type instructions)]
+        by-type (group-by :type instructions)
+        affine? (seq (:state-scores by-type))
+        cs (if affine? affine-cell-size cell-size)
+        active-state (or (:active-state app-state) :all)]
     [:svg {:width   "80%"
            :height  "50%"
-           :viewBox (print-str (- cell-size) (- cell-size) (str (* (inc cols) cell-size)) (str (* (inc rows) cell-size)))
+           :viewBox (print-str (- cs) (- cs) (str (* (inc cols) cs)) (str (* (inc rows) cs)))
            :id    "canvas"
            :style {:background-color "#fff"}}
-     [:rect {:x 0 :y 0 :width (* cell-size cols) :height (* cell-size rows) :fill "none" :stroke "black" :stroke-width 1}]
-     (map render-instruction (:dp-arrow by-type))
-     (map render-instruction (:path-arrow by-type))
-     (map render-instruction (:cell-score by-type))
-     (map render-instruction (:seq-label by-type))]))
+     [:rect {:x 0 :y 0 :width (* cs cols) :height (* cs rows) :fill "none" :stroke "black" :stroke-width 1}]
+     (if affine?
+       (list
+        (map #(render-state-arrow % cs active-state) (:state-arrow by-type))
+        (map #(render-state-scores % cs active-state) (:state-scores by-type))
+        (map #(render-seq-label-with-cs % cs) (:seq-label by-type)))
+       (list
+        (map render-instruction (:dp-arrow by-type))
+        (map render-instruction (:path-arrow by-type))
+        (map render-instruction (:cell-score by-type))
+        (map render-instruction (:seq-label by-type))))]))
 
 ;; ---------------------------------------------------------------------------
 ;; Form components (unchanged)
