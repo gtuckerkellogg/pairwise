@@ -4,6 +4,7 @@
             [reagent.dom :as rdom]
             [pairwise.alignment :as alignment]
             [pairwise.linear]  ; registers :linear multimethod implementations
+            [pairwise.affine] ; registers :affine multimethod implementations
             [pairwise.viz-model :as viz]
             [pairwise.substitution :as sub]
             [pairwise.cljsmacros  :refer-macros [read-file]]))
@@ -35,12 +36,16 @@
                                   :protein
                                   :same (:match-score app-state)
                                   :different (:mismatch-score app-state))
-                         :standard (get-in scoring-matrices [(:scoring-matrix app-state) :matrix]))]
-  (alignment/pairwise-align (:top-seq app-state)
-                         (:bottom-seq app-state)
-                         scoring-matrix
-                         (:gap-penalty app-state)
-                         :type (:alignment-type app-state))))
+                         :standard (get-in scoring-matrices [(:scoring-matrix app-state) :matrix]))
+        gap-penalty (if (= :affine (:gap-model app-state))
+                      {:d (:gap-open app-state) :e (:gap-extend app-state)}
+                      (:gap-penalty app-state))]
+    (alignment/pairwise-align (:top-seq app-state)
+                              (:bottom-seq app-state)
+                              scoring-matrix
+                              gap-penalty
+                              :type (:alignment-type app-state)
+                              :gap-model (:gap-model app-state))))
 
 ;; ---------------------------------------------------------------------------
 ;; IR instruction renderers (SVG / Hiccup)
@@ -195,19 +200,19 @@
   (let [state @app-state]
     [:div
      [:div {:class "panel panel-primary"}
-      [:div.panel-heading "Input sequences (up to 10 letters)"]
+      [:div.panel-heading (str "Input sequences (up to " (if (= :affine (:gap-model state)) 7 10) " letters)")]
       [:div.panel-body
        (row "TOP sequence"
             [:input.form-control {:type "text"
                                   :value (:top-seq state)
-                                  :max-length 10
+                                  :max-length (if (= :affine (:gap-model state)) 7 10)
                                   :on-change #(update-state! app-state :top-seq
                                                            (sub/sanitise (-> % .-target .-value)))}])
 
        (row "BOTTOM sequence"
             [:input.form-control {:type "text"
                                   :value (:bottom-seq state)
-                                  :max-length 10
+                                  :max-length (if (= :affine (:gap-model state)) 7 10)
                                   :on-change #(update-state! app-state :bottom-seq
                                                            (sub/sanitise (-> % .-target .-value)))}])]]
 
@@ -267,12 +272,37 @@
                                                          (keyword (-> % .-target .-value)))}
           (map (fn [[k v]] [:option {:key k :value k} (:name v)]) scoring-matrices)])
 
-       (row [:label "Linear gap penalty: " (:gap-penalty state)]
-            [:input.form-control
-             {:type "range" :min 0 :max 15
-              :value (:gap-penalty state)
-              :on-change #(update-state! app-state :gap-penalty
-                                       (js/parseInt (-> % .-target .-value)))}])]]]))
+       [:div.row
+        [:div.col-md-4 [:label "Gap Model"]]
+        [:div.col-md-8
+         [:div.btn-group
+          [:button.btn.btn-default {:class (when (= :linear (:gap-model state)) "active")
+                                    :on-click #(update-state! app-state :gap-model :linear)}
+           "Linear"]
+          [:button.btn.btn-default {:class (when (= :affine (:gap-model state)) "active")
+                                    :on-click #(update-state! app-state :gap-model :affine)}
+           "Affine"]]]]
+
+       (if (= :affine (:gap-model state))
+         [:div
+          (row [:label "Gap open (d): " (:gap-open state)]
+               [:input.form-control
+                {:type "range" :min 1 :max 20
+                 :value (:gap-open state)
+                 :on-change #(update-state! app-state :gap-open
+                                           (js/parseInt (-> % .-target .-value)))}])
+          (row [:label "Gap extend (e): " (:gap-extend state)]
+               [:input.form-control
+                {:type "range" :min 1 :max 10
+                 :value (:gap-extend state)
+                 :on-change #(update-state! app-state :gap-extend
+                                           (js/parseInt (-> % .-target .-value)))}])]
+         (row [:label "Linear gap penalty: " (:gap-penalty state)]
+              [:input.form-control
+               {:type "range" :min 0 :max 15
+                :value (:gap-penalty state)
+                :on-change #(update-state! app-state :gap-penalty
+                                         (js/parseInt (-> % .-target .-value)))}]))]]]))
 
 (defn display-alignment [{:keys [top bottom]}]
   ^{:key (swap! app-item-id inc)} [:p top [:br] bottom [:br] [:br]])
@@ -283,12 +313,26 @@
    [:strong (:score result)]])
 
 
+(defn state-toggle [app-state]
+  (let [active (or (:active-state @app-state) :all)]
+    [:div.btn-group {:style {:margin-bottom "10px"}}
+     (for [s [:all :M :X :Y]
+           :let [label (if (= s :all) "All" (str "V'" (name s)))]]
+       ^{:key s}
+       [:button.btn.btn-sm.btn-default
+        {:class (when (= active s) "active")
+         :on-click #(swap! app-state assoc :active-state s)}
+        label])]))
+
 (defn page []
   (let [app-state (atom {:top-seq     "HEAGAWGHEE"
                          :bottom-seq     "PAWHEAE"
                          :scoring-matrix :blosum50
                          :scoring-matrix-type :standard
                          :gap-penalty          8
+                         :gap-model            :linear
+                         :gap-open             12
+                         :gap-extend           2
                          :sequence-type  :protein
                          :alignment-type :global
                          :match-score     5
@@ -319,8 +363,11 @@
           (when (:result @app-state)
             [:div {:class "text-center" :margin-left "5%"}
              [:div.panel-heading [:h3 "Dynamic programming matrix visualisation"]
-              "Paths for optimal alignments are indicated in red"
-              ]
+              (if (= :affine (:gap-model @app-state))
+                "State-aware arrows: blue=V'M, green=V'X, orange=V'Y"
+                "Paths for optimal alignments are indicated in red")]
+             (when (= :affine (:gap-model @app-state))
+               [state-toggle app-state])
              [:div.panel-body
               [:div.row (svg-component @app-state)]]
              ])]]
