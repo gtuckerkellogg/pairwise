@@ -37,8 +37,10 @@ This is a Clojure/ClojureScript library for pairwise sequence comparison using d
 - **pairwise.alignment**: Multimethod definitions and shared traceback/path logic, dispatching on `:gap-model` (`:linear` or `:affine`)
 - **pairwise.linear**: Linear gap penalty implementations (Needleman-Wunsch/Smith-Waterman)
 - **pairwise.affine**: Affine gap penalty implementations (Gotoh algorithm with three-state DP: V'M, V'X, V'Y)
+- **pairwise.viz-model**: Shared visualization IR — transforms alignment results into renderer-agnostic drawing instructions (`.cljc`, used by both TikZ and webapp)
 - **pairwise.substitution**: Scoring matrix utilities and sequence validation
-- **pairwise.webapp**: Reagent-based web interface (linear gaps only)
+- **pairwise.tikz-view**: TikZ/LaTeX renderer — consumes IR instructions to produce Beamer-compatible LaTeX output
+- **pairwise.webapp**: Reagent-based web interface — consumes IR instructions for SVG visualization (linear gaps only)
 - **pairwise.main**: Command-line interface (supports both linear and affine)
 
 ### Key Components
@@ -59,6 +61,15 @@ This is a Clojure/ClojureScript library for pairwise sequence comparison using d
 - `resources/public/`: Web assets and compiled JavaScript
 - `demo/`: Standalone demo build output
 - `test/`: Unit tests
+
+### Visualization IR
+- **pairwise.viz-model** produces a renderer-agnostic intermediate representation from alignment results
+- IR is a map with `:dimensions`, `:sequences`, and `:instructions` (a flat vector of typed instruction maps)
+- Instruction types: `:grid`, `:seq-label`, `:cell-score`, `:dp-arrow`, `:path-arrow`
+- Each instruction carries grid coordinates (row/col) — renderers convert to pixels or TikZ units
+- `:step` numbers on instructions enable Beamer overlays (TikZ) and could enable web animation
+- Both `tikz-view` and `webapp` consume this IR via `render-instruction` multimethods dispatching on `:type`
+- Extensible: adding new instruction types (e.g. `:state-scores` for affine visualization) only requires adding a new `defmethod` in each renderer
 
 ### Alignment Types
 - `:global`: Needleman-Wunsch algorithm for global alignment
