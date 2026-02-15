@@ -62,6 +62,21 @@
       ;; Score = match(A,A) + gap_penalty + match(C,C) = 5 - 8 + 5 = 2
       (is (= 2 (:score result))))))
 
+(deftest altschul-erickson-counterexample
+  (testing "Finds the optimal alignment that Gotoh's original algorithm misses
+           (Altschul & Erickson 1986, Fig. 7: AAAGGG vs TTAAAAGGGGTT, w_k = 5+k)"
+    (let [S      (sub/simple-substitution-matrix :dna :same 0 :different -1)
+          result (alignment/pairwise-align "AAAGGG" "TTAAAAGGGGTT" S {:d 6 :e 1}
+                   :type :global :gap-model :affine)
+          aln    (first (:alignments result))]
+      ;; Cost 15 in the paper's minimization = score -15 in our maximization
+      (is (== -15 (:score result)))
+      ;; Exactly one optimal alignment
+      (is (= 1 (count (:alignments result))))
+      ;; The alignment has a single contiguous gap
+      (is (= "AAA------GGG" (:top aln)))
+      (is (= "TTAAAAGGGGTT" (:bottom aln))))))
+
 ;; ---------------------------------------------------------------------------
 ;; Local alignment tests
 ;; ---------------------------------------------------------------------------
