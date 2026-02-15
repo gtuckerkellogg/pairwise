@@ -166,6 +166,30 @@
       (is (empty? (instructions-of-type model :state-scores))))))
 
 ;; ---------------------------------------------------------------------------
+;; Affine state-arrows
+;; ---------------------------------------------------------------------------
+
+(deftest affine-produces-state-arrows
+  (testing "Affine alignment produces :state-arrow instructions"
+    (let [model (viz/alignment->instructions small-affine-result)
+          state-arrows (instructions-of-type model :state-arrow)]
+      (is (pos? (count state-arrows)))
+      ;; Each state-arrow has :from-state and :to-state
+      (is (every? #(and (contains? % :from-state) (contains? % :to-state)) state-arrows))
+      ;; States are :M, :X, or :Y
+      (is (every? #(#{:M :X :Y} (:from-state %)) state-arrows))
+      (is (every? #(#{:M :X :Y} (:to-state %)) state-arrows))
+      ;; Each has :arrow-type (:dp or :optimal)
+      (is (every? #(#{:dp :optimal} (:arrow-type %)) state-arrows))
+      ;; Directions are valid
+      (is (every? #(#{:diag :horiz :vert} (:direction %)) state-arrows)))))
+
+(deftest linear-produces-no-state-arrows
+  (testing "Linear alignment does NOT produce :state-arrow instructions"
+    (let [model (viz/alignment->instructions ac-result)]
+      (is (empty? (instructions-of-type model :state-arrow))))))
+
+;; ---------------------------------------------------------------------------
 ;; Affine compatibility
 ;; ---------------------------------------------------------------------------
 
@@ -175,7 +199,8 @@
           types (set (map :type (:instructions model)))]
       (is (contains? types :grid))
       (is (contains? types :cell-score))
-      (is (contains? types :path-arrow))
+      (is (contains? types :state-scores))
+      (is (contains? types :state-arrow))
       ;; All cell-score instructions have numeric scores
       (is (every? number? (map :score (instructions-of-type model :cell-score)))))))
 

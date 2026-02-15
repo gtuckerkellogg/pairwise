@@ -79,6 +79,54 @@
               :step step-time}))
          path-steps reveal-times)))
 
+(defn- state-keyword->from-key
+  "Map state keyword to the DP matrix key holding that state's traceback sources."
+  [state]
+  (case state :M :from-m :X :from-x :Y :from-y))
+
+(defn- state-dp-arrows
+  "Generate :state-arrow instructions with :arrow-type :dp from affine DP matrix.
+   Reads :from-m, :from-x, :from-y per cell to produce state-aware arrows."
+  [D num-cols]
+  (for [[r c] (matrix/cell-coordinates D)
+        :let [cell (get-in D [r c])
+              step (cell-step num-cols [r c])]
+        from-state [:M :X :Y]
+        :let [sources (get cell (state-keyword->from-key from-state))]
+        :when (seq sources)
+        [to-r to-c to-state] sources]
+    {:type :state-arrow
+     :from-row r :from-col c :from-state from-state
+     :to-row to-r :to-col to-c :to-state to-state
+     :direction (matrix/direction-between [r c] [to-r to-c])
+     :arrow-type :dp
+     :step step}))
+
+(defn- state-path-arrows
+  "Generate :state-arrow instructions with :arrow-type :optimal from affine optimal paths.
+   Affine path nodes are [row col :state]."
+  [result]
+  (let [paths (:optimal-paths result)
+        path-steps (mapcat (partial partition 2 1) paths)
+        reveal-times (flatten (:optimal-path-steps result))]
+    (map (fn [step step-time]
+           (let [from (first step)
+                 to (second step)
+                 from-r (first from) from-c (second from) from-state (nth from 2)
+                 to-r (first to) to-c (second to) to-state (nth to 2)]
+             {:type :state-arrow
+              :from-row from-r :from-col from-c :from-state from-state
+              :to-row to-r :to-col to-c :to-state to-state
+              :direction (matrix/direction-between [from-r from-c] [to-r to-c])
+              :arrow-type :optimal
+              :step step-time}))
+         path-steps reveal-times)))
+
+(defn- affine-mode?
+  "Check if a DP matrix was produced by the affine algorithm."
+  [D]
+  (contains? (get-in D [0 0]) :vm))
+
 (defn alignment->instructions
   "Transform an alignment result into a renderer-agnostic sequence of
    drawing instructions."
@@ -86,7 +134,8 @@
   (let [D (:dp-matrix result)
         s1 (:sequence-1 result)
         s2 (:sequence-2 result)
-        [rows cols] (matrix/matrix-dimensions D)]
+        [rows cols] (matrix/matrix-dimensions D)
+        affine? (affine-mode? D)]
     {:dimensions {:rows rows :cols cols}
      :sequences {:top s1 :left s2}
      :instructions
@@ -95,5 +144,8 @@
            (seq-labels s1 s2)
            (cell-scores D cols)
            (state-scores D cols)
-           (dp-arrows D cols)
-           (path-arrows result)))}))
+           (if affine?
+             (concat (state-dp-arrows D cols)
+                     (state-path-arrows result))
+             (concat (dp-arrows D cols)
+                     (path-arrows result)))))}))
