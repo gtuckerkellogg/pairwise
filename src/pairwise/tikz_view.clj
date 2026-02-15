@@ -1,8 +1,7 @@
 (ns pairwise.tikz-view
   (:require [pairwise.alignment :as pairwise]
             [pairwise.linear]  ; registers :linear multimethod implementations
-            [pairwise.matrix :as matrix]
-            [pairwise.substitution :refer :all]
+            [pairwise.viz-model :as viz]
             [clojure.string :as str]
             [clojure.java.io :as io]))
 
@@ -18,16 +17,6 @@
   (let [scale (+ 2 (max (count s1) (count s2)))]
     (format "\\pgftransformscale{%3.2f}\n" (/ 8. scale))))
 
-(defn draw-grid [s1 s2]
-  (let [M (inc (count s1))
-        N (inc (count s2))]
-    ["\\pgftransformrotate{-90}\n"
-     (format "\\draw [xshift=-0.5cm,yshift=-0.5cm,color=lightgray] (0,0) grid (%d,%d);\n" N M)
-     (map str (map-indexed #(format "\\draw (-1,%s) node [scale=1] {%s};\n" (inc %1) %2) (seq s1)))
-     (map str (map-indexed #(format "\\draw (%s,-1) node [scale=1] {%s};\n" (inc %1) %2) (seq s2)))]
-    ))
-
-
 (defn latex-env [env s]
   (vector (format "\n\\begin{%s}\n" (name env))
           s
@@ -41,67 +30,53 @@
           s
           "}"))
 
+;; ---------------------------------------------------------------------------
+;; Instruction renderers
+;; ---------------------------------------------------------------------------
 
-(defn- cell-step
-  "Compute Beamer overlay step number for a cell at [row col] in matrix D."
-  [D [row col]]
-  (inc (+ col (* row (count (first D))))))
+(def ^:private direction-cmd
+  {:horiz "drawleft" :vert "drawup" :diag "drawmatch"})
 
-(defn- draw-score [D ij]
-  (let [score (:score (get-in D ij))
-        step (cell-step D ij)
-        i (first ij)
-        j (second ij)]
-    (format "\\visible<%d->{\\draw (%d,%d) node [fill=white,scale=0.5] {%s};}\n" step i j score)))
+(defmulti render-instruction
+  "Render a single IR instruction as a TikZ string."
+  :type)
 
-(defn- draw-dp-arrows [D ij]
-  (let [from (:from (get-in D ij))
-        step (cell-step D ij)
-        direction (:direction (get-in D ij))
-        direction-map {:horiz "drawleft"
-                  :vert  "drawup"
-                  :diag  "drawmatch"}
-        i (first ij)
-        j (second ij)]
-    (when-not (nil? (first direction))
-      (map-indexed #(format "\\visible<%d->{\\%s{%d}{%d}{%s}}\n" step (%2 direction-map) i j "align step" %1) direction )
-      )))
+(defmethod render-instruction :grid [{:keys [rows cols]}]
+  ["\\pgftransformrotate{-90}\n"
+   (format "\\draw [xshift=-0.5cm,yshift=-0.5cm,color=lightgray] (0,0) grid (%d,%d);\n" rows cols)])
 
-(defn- draw-optimal-paths [a]
-  (let [paths    (:optimal-paths a)
-        path-steps  (mapcat (partial partition 2 1) paths)
-        reveal-times (flatten (:optimal-path-steps a))
-        direction-map {:horiz "drawleft" :vert "drawup" :diag "drawmatch"}
-        draw-one (fn [step step-time]
-                   (let [from (first step)
-                         to (second step)
-                         substitution-type (get-in a [:dp-matrix (first from) (second from) :substitution-type])
-                         draw (direction-map (matrix/direction-between from to))]
-                     (if (= substitution-type :match)
-                       (format "\\visible<%d->{\\%s{%d}{%d}{optimal step}}\n" step-time draw (first from) (second from))                       
-                       (format "\\visible<%d->{\\%s{%d}{%d}{optimal-but-non-identical step}}\n" step-time draw (first from) (second from))                       
-                       )
-))]
-    (apply str (mapcat draw-one path-steps reveal-times))
-    )
-  )
+(defmethod render-instruction :seq-label [{:keys [axis index char]}]
+  (case axis
+    :top  (format "\\draw (-1,%s) node [scale=1] {%s};\n" (inc index) char)
+    :left (format "\\draw (%s,-1) node [scale=1] {%s};\n" (inc index) char)))
+
+(defmethod render-instruction :cell-score [{:keys [row col score step]}]
+  (format "\\visible<%d->{\\draw (%d,%d) node [fill=white,scale=0.5] {%s};}\n" step row col score))
+
+(defmethod render-instruction :dp-arrow [{:keys [from-row from-col direction step]}]
+  (format "\\visible<%d->{\\%s{%d}{%d}{%s}}\n"
+          step (direction-cmd direction) from-row from-col "align step"))
+
+(defmethod render-instruction :path-arrow [{:keys [from-row from-col direction substitution-type step]}]
+  (let [style (if (= substitution-type :match)
+                "optimal step"
+                "optimal-but-non-identical step")]
+    (format "\\visible<%d->{\\%s{%d}{%d}{%s}}\n"
+            step (direction-cmd direction) from-row from-col style)))
+
+(defmethod render-instruction :default [_inst]
+  nil)
+
+;; ---------------------------------------------------------------------------
+;; Main entry point
+;; ---------------------------------------------------------------------------
 
 (defn tikz-alignment
-  "doc-string"
+  "Generate a complete TikZ/LaTeX document for an alignment visualization."
   [alignments]
-  (let [ij      (matrix/cell-coordinates (:dp-matrix alignments))
-        content (flatten  [(draw-grid (:sequence-1 alignments) (:sequence-2 alignments))
-                           (map #(draw-score (:dp-matrix alignments) %1) ij)
-                           (map #(draw-dp-arrows (:dp-matrix alignments) %1) ij)
-                           (draw-optimal-paths alignments)
-                           ])
-        ]
-
-    (str/join   (flatten (list header  (->> (flatten content)
-                                            (latex-env :tikzpicture)
-                                            (latex-env :standaloneframe)
-                                            (latex-env :document))))
-              )))
-
-
-
+  (let [model (viz/alignment->instructions alignments)
+        content (flatten (map render-instruction (:instructions model)))]
+    (str/join (flatten (list header (->> (flatten content)
+                                         (latex-env :tikzpicture)
+                                         (latex-env :standaloneframe)
+                                         (latex-env :document)))))))

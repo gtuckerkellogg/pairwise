@@ -4,7 +4,7 @@
             [reagent.dom :as rdom]
             [pairwise.alignment :as alignment]
             [pairwise.linear]  ; registers :linear multimethod implementations
-            [pairwise.matrix :as matrix]
+            [pairwise.viz-model :as viz]
             [pairwise.substitution :as sub]
             [pairwise.cljsmacros  :refer-macros [read-file]]))
 
@@ -12,15 +12,15 @@
 
 (defonce scoring-matrices {
                            :blosum62 {:name "BLOSUM62"
-                                      :matrix (sub/read-scoring-matrix (read-file "resources/data/BLOSUM62.txt"))} 
+                                      :matrix (sub/read-scoring-matrix (read-file "resources/data/BLOSUM62.txt"))}
                            :blosum50 {:name "BLOSUM50"
-                                      :matrix (sub/read-scoring-matrix (read-file "resources/data/BLOSUM50.txt"))} 
+                                      :matrix (sub/read-scoring-matrix (read-file "resources/data/BLOSUM50.txt"))}
                            :pam250 {:name "PAM250"
-                                    :matrix (sub/read-scoring-matrix (read-file "resources/data/PAM250.txt"))} 
+                                    :matrix (sub/read-scoring-matrix (read-file "resources/data/PAM250.txt"))}
                            :pam120 {:name "PAM120"
-                                    :matrix (sub/read-scoring-matrix (read-file "resources/data/PAM120.txt"))} 
+                                    :matrix (sub/read-scoring-matrix (read-file "resources/data/PAM120.txt"))}
                            :pam40 {:name "PAM40"
-                                   :matrix (sub/read-scoring-matrix (read-file "resources/data/PAM40.txt")) 
+                                   :matrix (sub/read-scoring-matrix (read-file "resources/data/PAM40.txt"))
                                    }
                            })
 
@@ -42,57 +42,75 @@
                          (:gap-penalty app-state)
                          :type (:alignment-type app-state))))
 
-(defn draw-arrow [app-state [r c] & {:keys [stroke stroke-width] :or {stroke "gray" stroke-width 2}}]
-  (let [x1 (+ half-cell (* c cell-size))
-        y1 (+ half-cell (* r cell-size))
-        from-seq (get-in app-state [:result :dp-matrix r c :from])
-        xpos (fn [[_ c]] (+ half-cell (* cell-size c)))
-        ypos (fn [[r _]] (+ half-cell (* cell-size r)))]
-    (map #(when-not (nil? %)
-            [:line {:stroke stroke :stroke-width stroke-width :x1 x1 :x2 (xpos %) :y1 y1
-                    :y2 (ypos %)}]) from-seq)))
+;; ---------------------------------------------------------------------------
+;; IR instruction renderers (SVG / Hiccup)
+;; ---------------------------------------------------------------------------
 
-(defn draw-mask [_app-state [r c]]
-  (let [x1 (+ half-cell (* c cell-size))
-        y1 (+ half-cell (* r cell-size))]
-    [:circle {:cx x1 :cy y1 :r 12 :fill "white"}]))
+(defmulti render-instruction
+  "Render a single IR instruction as Hiccup SVG."
+  :type)
 
-(defn draw-cell [app-state [r c]]
-  (let [x (* c cell-size)
-        y (* r cell-size)
-        score (get-in app-state [:result :dp-matrix r c :score])]
+(defmethod render-instruction :dp-arrow [{:keys [from-row from-col to-row to-col]}]
+  (let [x1 (+ half-cell (* from-col cell-size))
+        y1 (+ half-cell (* from-row cell-size))
+        x2 (+ half-cell (* to-col cell-size))
+        y2 (+ half-cell (* to-row cell-size))]
+    [:line {:stroke "gray" :stroke-width 2 :x1 x1 :x2 x2 :y1 y1 :y2 y2}]))
+
+(defmethod render-instruction :path-arrow [{:keys [from-row from-col to-row to-col]}]
+  (let [x1 (+ half-cell (* from-col cell-size))
+        y1 (+ half-cell (* from-row cell-size))
+        x2 (+ half-cell (* to-col cell-size))
+        y2 (+ half-cell (* to-row cell-size))]
+    [:line {:stroke "red" :stroke-width 4 :x1 x1 :x2 x2 :y1 y1 :y2 y2}]))
+
+(defn- render-mask [{:keys [row col]}]
+  (let [cx (+ half-cell (* col cell-size))
+        cy (+ half-cell (* row cell-size))]
+    [:circle {:cx cx :cy cy :r 12 :fill "white"}]))
+
+(defmethod render-instruction :cell-score [{:keys [row col score] :as inst}]
+  (let [x (* col cell-size)
+        y (* row cell-size)]
     [:g
+     (render-mask inst)
      [:rect {:x x :y y :width cell-size :height cell-size :fill "none" :stroke "gray" :stroke-width 0.2}]
      [:text {:x (+ x half-cell) :y (+ y half-cell) :text-anchor "middle" :alignment-baseline "middle" :font-family "Verdana" :font-size "70%" :stroke "black"} score]]))
 
-(defn draw-top-seq [app-state]
-  (let [draw-a-letter (fn [i x] [:text {:x (+ half-cell (* (inc i) cell-size)) :y (- half-cell) :font-size "150%" :text-anchor "middle" :alignment-baseline "middle"} x])]
-    (map-indexed draw-a-letter (seq (:top-seq app-state)))))
+(defmethod render-instruction :seq-label [{:keys [axis index char]}]
+  (case axis
+    :top  [:text {:x (+ half-cell (* (inc index) cell-size)) :y (- half-cell) :font-size "150%" :text-anchor "middle" :alignment-baseline "middle"} char]
+    :left [:text {:y (+ half-cell (* (inc index) cell-size)) :x (- half-cell) :font-size "150%" :text-anchor "middle" :alignment-baseline "middle"} char]))
 
-(defn draw-left-seq [app-state]
-  (let [draw-a-letter (fn [i x]
-                        [:text {:y (+ half-cell (* (inc i) cell-size)) :x (- half-cell) :font-size "150%" :text-anchor "middle" :alignment-baseline "middle"} x])]
-    (map-indexed draw-a-letter (seq (:bottom-seq app-state)))))
+(defmethod render-instruction :grid [_inst]
+  nil)
 
-(defn svg-component [ app-state & _args ]
-  (let [dp-matrix (get-in app-state [:result :dp-matrix])
-        ij        (matrix/cell-coordinates dp-matrix)
-        [rows cols] (matrix/matrix-dimensions dp-matrix)
-        draw-opt (fn [paths] (map #(draw-arrow app-state % :stroke "red" :stroke-width 4) paths))]
-      [:svg {:width   "80%"
-             :height  "50%"
-             :viewBox (print-str (- cell-size) (- cell-size) (str (* (inc cols) cell-size)) (str (* (inc rows) cell-size)))
-         :id    "canvas"
-         :style {:background-color "#fff"}}
-       [:rect {:x 0 :y 0 :width (* cell-size cols) :height (* cell-size rows) :fill "none" :stroke "black" :stroke-width 1}]
-       (map (partial draw-arrow app-state) ij)
-       (map draw-opt (:optimal-paths (:result app-state)))
-       (map (partial draw-mask app-state) ij)
-       (map (partial draw-cell app-state) ij)
-       (draw-top-seq app-state)
-       (draw-left-seq app-state)
-       ]))
+(defmethod render-instruction :default [_inst]
+  nil)
 
+;; ---------------------------------------------------------------------------
+;; SVG component — renders IR in correct visual layer order
+;; ---------------------------------------------------------------------------
+
+(defn svg-component [app-state & _args]
+  (let [model (viz/alignment->instructions (:result app-state))
+        {:keys [rows cols]} (:dimensions model)
+        instructions (:instructions model)
+        by-type (group-by :type instructions)]
+    [:svg {:width   "80%"
+           :height  "50%"
+           :viewBox (print-str (- cell-size) (- cell-size) (str (* (inc cols) cell-size)) (str (* (inc rows) cell-size)))
+           :id    "canvas"
+           :style {:background-color "#fff"}}
+     [:rect {:x 0 :y 0 :width (* cell-size cols) :height (* cell-size rows) :fill "none" :stroke "black" :stroke-width 1}]
+     (map render-instruction (:dp-arrow by-type))
+     (map render-instruction (:path-arrow by-type))
+     (map render-instruction (:cell-score by-type))
+     (map render-instruction (:seq-label by-type))]))
+
+;; ---------------------------------------------------------------------------
+;; Form components (unchanged)
+;; ---------------------------------------------------------------------------
 
 (defn row [label input]
   [:div.row
@@ -105,7 +123,7 @@
 
 (defn form-component [app-state]
   (let [state @app-state]
-    [:div 
+    [:div
      [:div {:class "panel panel-primary"}
       [:div.panel-heading "Input sequences (up to 10 letters)"]
       [:div.panel-body
@@ -113,14 +131,14 @@
             [:input.form-control {:type "text"
                                   :value (:top-seq state)
                                   :max-length 10
-                                  :on-change #(update-state! app-state :top-seq 
+                                  :on-change #(update-state! app-state :top-seq
                                                            (sub/sanitise (-> % .-target .-value)))}])
 
        (row "BOTTOM sequence"
             [:input.form-control {:type "text"
                                   :value (:bottom-seq state)
                                   :max-length 10
-                                  :on-change #(update-state! app-state :bottom-seq 
+                                  :on-change #(update-state! app-state :bottom-seq
                                                            (sub/sanitise (-> % .-target .-value)))}])]]
 
      [:div {:class "panel panel-primary"}
@@ -128,31 +146,31 @@
       [:div.panel-body
        [:div.btn-group
         [:button.btn.btn-default {:class (when (= :global (:alignment-type state)) "active")
-                                  :on-click #(update-state! app-state :alignment-type :global)} 
+                                  :on-click #(update-state! app-state :alignment-type :global)}
          "Needleman-Wunsch"]
         [:button.btn.btn-default {:class (when (= :local (:alignment-type state)) "active")
-                                  :on-click #(update-state! app-state :alignment-type :local)} 
+                                  :on-click #(update-state! app-state :alignment-type :local)}
          "Smith-Waterman"]]]]
-     
+
      [:div {:class "panel panel-primary"}
       [:div.panel-heading "Algorithm Parameters"]
-      [:div.panel-body 
+      [:div.panel-body
 
-       [:div.row 
+       [:div.row
         [:div.col-md-4 {:vertical-align "middle"} [:label  "Scoring Matrix"]]
         [:div.col-md-8
          [:div
           [:label
-           [:input {:type "radio" 
-                    :name "scoring-matrix-type" 
+           [:input {:type "radio"
+                    :name "scoring-matrix-type"
                     :value "simple"
                     :checked (= :simple (:scoring-matrix-type state))
                     :on-change #(update-state! app-state :scoring-matrix-type :simple)}]
            " User-defined"]]
          [:div
           [:label
-           [:input {:type "radio" 
-                    :name "scoring-matrix-type" 
+           [:input {:type "radio"
+                    :name "scoring-matrix-type"
                     :value "standard"
                     :checked (= :standard (:scoring-matrix-type state))
                     :on-change #(update-state! app-state :scoring-matrix-type :standard)}]
@@ -162,28 +180,28 @@
          [:div.form-group
           (row [:label "match: " (:match-score state)]
                [:input.form-control
-                {:type "range" :min 0 :max 15 
+                {:type "range" :min 0 :max 15
                  :value (:match-score state)
-                 :on-change #(update-state! app-state :match-score 
+                 :on-change #(update-state! app-state :match-score
                                           (js/parseInt (-> % .-target .-value)))}])
           (row [:label "mismatch: " (:mismatch-score state)]
                [:input.form-control
-                {:type "range" :min -10 :max 0 
+                {:type "range" :min -10 :max 0
                  :value (:mismatch-score state)
-                 :on-change #(update-state! app-state :mismatch-score 
+                 :on-change #(update-state! app-state :mismatch-score
                                           (js/parseInt (-> % .-target .-value)))}])])
 
        (when (= :standard (:scoring-matrix-type state))
          [:select.form-control {:value (:scoring-matrix state)
-                                :on-change #(update-state! app-state :scoring-matrix 
+                                :on-change #(update-state! app-state :scoring-matrix
                                                          (keyword (-> % .-target .-value)))}
           (map (fn [[k v]] [:option {:key k :value k} (:name v)]) scoring-matrices)])
 
        (row [:label "Linear gap penalty: " (:gap-penalty state)]
             [:input.form-control
-             {:type "range" :min 0 :max 15 
+             {:type "range" :min 0 :max 15
               :value (:gap-penalty state)
-              :on-change #(update-state! app-state :gap-penalty 
+              :on-change #(update-state! app-state :gap-penalty
                                        (js/parseInt (-> % .-target .-value)))}])]]]))
 
 (defn display-alignment [{:keys [top bottom]}]
@@ -210,7 +228,7 @@
     (fn []
       [:div
        [:div.page-header [:h1.text-center "Optimal pairwise sequence alignment" ] ]
-       
+
        [:div.row
         [:div {:class "col-md-4"}
          [:div.row [form-component app-state]]
@@ -219,12 +237,12 @@
             [:div {:class "panel panel-info"}
              [:div.panel-heading {:class "text-center"} (summarize-alignment @app-state)]
              [:div.panel-body
-              [:div.row 
+              [:div.row
                [:pre  (map display-alignment (:alignments (:result @app-state)))]
                ]
               ]
              ])
-          
+
           ]]
         [:div {:class "col-md-8"}
          [:div.row
