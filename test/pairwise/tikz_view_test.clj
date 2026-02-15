@@ -43,6 +43,16 @@
       (is (str/includes? output "state-X"))
       (is (str/includes? output "state-Y")))))
 
+(deftest tikz-affine-has-decomposition-overlays
+  (testing "Affine TikZ output includes layer decomposition overlays in body"
+    (let [output (tikz/tikz-alignment affine-result)
+          ;; Header defines each -dim style once; body uses should add more
+          count-occurrences (fn [s sub] (count (re-seq (re-pattern (java.util.regex.Pattern/quote sub)) s)))]
+      ;; More than 1 occurrence means it's used in the body, not just the header definition
+      (is (> (count-occurrences output "state-M-dim") 1))
+      (is (> (count-occurrences output "state-X-dim") 1))
+      (is (> (count-occurrences output "state-Y-dim") 1)))))
+
 (deftest scale-tikz-test
   (testing "Scale returns a pgftransformscale LaTeX command"
     (let [scale (tikz/scale-tikz "HEAGAWGHEE" "PAWHEAE")]

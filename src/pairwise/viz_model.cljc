@@ -127,6 +127,11 @@
   [D]
   (contains? (get-in D [0 0]) :vm))
 
+(defn- max-step
+  "Find the maximum :step value across a collection of instructions."
+  [instructions]
+  (reduce max 0 (keep :step instructions)))
+
 (defn alignment->instructions
   "Transform an alignment result into a renderer-agnostic sequence of
    drawing instructions."
@@ -136,16 +141,31 @@
         s2 (:sequence-2 result)
         [rows cols] (matrix/matrix-dimensions D)
         affine? (affine-mode? D)]
-    {:dimensions {:rows rows :cols cols}
-     :sequences {:top s1 :left s2}
-     :instructions
-     (vec (concat
-           [{:type :grid :rows rows :cols cols}]
-           (seq-labels s1 s2)
-           (cell-scores D cols)
-           (state-scores D cols)
-           (if affine?
-             (concat (state-dp-arrows D cols)
-                     (state-path-arrows result))
-             (concat (dp-arrows D cols)
-                     (path-arrows result)))))}))
+    (if affine?
+      (let [scores (cell-scores D cols)
+            st-scores (state-scores D cols)
+            st-dp (state-dp-arrows D cols)
+            st-path (state-path-arrows result)
+            all-insts (concat [{:type :grid :rows rows :cols cols}]
+                              (seq-labels s1 s2)
+                              scores st-scores st-dp st-path)
+            decomp-start (inc (max-step all-insts))]
+        {:dimensions {:rows rows :cols cols}
+         :sequences {:top s1 :left s2}
+         :instructions
+         (vec (concat all-insts
+                      [{:type :decomposition-phase
+                        :states [:M :X :Y]
+                        :start-step decomp-start
+                        :state-scores (vec st-scores)
+                        :state-arrows (vec (concat st-dp st-path))}]))})
+      {:dimensions {:rows rows :cols cols}
+       :sequences {:top s1 :left s2}
+       :instructions
+       (vec (concat
+             [{:type :grid :rows rows :cols cols}]
+             (seq-labels s1 s2)
+             (cell-scores D cols)
+             (state-scores D cols)
+             (dp-arrows D cols)
+             (path-arrows result)))})))

@@ -94,6 +94,51 @@
             (+ from-row from-dr) (+ from-col from-dc)
             (+ to-row to-dr) (+ to-col to-dc))))
 
+(defn- render-decomp-score
+  "Render a single state-score value for the decomposition phase."
+  [row col val offset-key scale style-suffix step]
+  (when (some? val)
+    (let [[dr dc] (state-offset offset-key)]
+      (format "\\visible<%d>{\\draw (%s,%s) node [fill=white,scale=%s,%s] {%s};}\n"
+              step (+ row dr) (+ col dc) scale style-suffix val))))
+
+(defn- render-decomp-arrow
+  "Render a single state-arrow for the decomposition phase."
+  [arrow style-suffix step]
+  (let [{:keys [from-row from-col from-state to-row to-col to-state arrow-type]} arrow
+        [from-dr from-dc] (state-offset from-state)
+        [to-dr to-dc] (state-offset to-state)
+        width (if (= arrow-type :optimal) "very thick" "")]
+    (format "\\visible<%d>{\\draw[->,>={latex},%s%s] (%s,%s) -- (%s,%s);}\n"
+            step style-suffix (if (seq width) (str "," width) "")
+            (+ from-row from-dr) (+ from-col from-dc)
+            (+ to-row to-dr) (+ to-col to-dc))))
+
+(defmethod render-instruction :decomposition-phase
+  [{:keys [states start-step state-scores state-arrows]}]
+  (vec
+   (for [[idx highlight] (map-indexed vector states)
+         :let [step (+ start-step idx)]]
+     (str
+      ;; Render all scores — highlighted state at full style, others dimmed
+      (apply str
+        (for [{:keys [row col vm vx vy]} state-scores]
+          (str
+           (render-decomp-score row col vx :X "0.35"
+                                (if (= highlight :X) "state-X" "state-X-dim") step)
+           (render-decomp-score row col vm :M "0.4"
+                                (if (= highlight :M) "state-M" "state-M-dim") step)
+           (render-decomp-score row col vy :Y "0.35"
+                                (if (= highlight :Y) "state-Y" "state-Y-dim") step))))
+      ;; Render all arrows — highlighted state at full style, others dimmed
+      (apply str
+        (for [arrow state-arrows]
+          (let [from-state (:from-state arrow)
+                style (if (= highlight from-state)
+                        (str "state-" (name from-state))
+                        (str "state-" (name from-state) "-dim"))]
+            (render-decomp-arrow arrow style step))))))))
+
 (defmethod render-instruction :default [_inst]
   nil)
 
