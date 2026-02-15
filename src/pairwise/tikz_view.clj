@@ -64,6 +64,36 @@
     (format "\\visible<%d->{\\%s{%d}{%d}{%s}}\n"
             step (direction-cmd direction) from-row from-col style)))
 
+;; Sub-region offsets within a cell (diagonal mnemonic)
+;; V'X: upper-right, V'M: center, V'Y: lower-left
+(def ^:private state-offset
+  {:X [ 0.3 -0.3]    ;; upper-right in TikZ rotated coords
+   :M [ 0.0  0.0]    ;; center
+   :Y [-0.3  0.3]})  ;; lower-left
+
+(defmethod render-instruction :state-scores [{:keys [row col vm vx vy step]}]
+  (let [fmt (fn [val offset-key scale]
+              (when (some? val)
+                (let [[dr dc] (state-offset offset-key)]
+                  (format "\\visible<%d->{\\draw (%s,%s) node [fill=white,scale=%s] {%s};}\n"
+                          step (+ row dr) (+ col dc) scale val))))]
+    [(fmt vx :X "0.35")
+     (fmt vm :M "0.4")
+     (fmt vy :Y "0.35")]))
+
+(defmethod render-instruction :state-arrow [{:keys [from-row from-col from-state
+                                                     to-row to-col to-state
+                                                     direction arrow-type step]}]
+  (let [[from-dr from-dc] (state-offset from-state)
+        [to-dr to-dc] (state-offset to-state)
+        style (if (= arrow-type :optimal)
+                (str "state-" (name from-state) ",very thick")
+                (str "state-" (name from-state)))]
+    (format "\\visible<%d->{\\draw[->,>={latex},%s] (%s,%s) -- (%s,%s);}\n"
+            step style
+            (+ from-row from-dr) (+ from-col from-dc)
+            (+ to-row to-dr) (+ to-col to-dc))))
+
 (defmethod render-instruction :default [_inst]
   nil)
 

@@ -2,6 +2,8 @@
   (:require [clojure.test :refer :all]
             [pairwise.tikz-view :as tikz]
             [pairwise.linear :as pairwise]
+            [pairwise.affine]
+            [pairwise.alignment :as alignment]
             [pairwise.substitution :as sub]
             [clojure.string :as str]))
 
@@ -24,6 +26,22 @@
         (is (str/includes? output (str ch))))
       (doseq [ch (seq "PAWHEAE")]
         (is (str/includes? output (str ch)))))))
+
+(def affine-result
+  (let [S (sub/read-scoring-matrix (slurp "resources/data/BLOSUM50.txt"))]
+    (alignment/pairwise-align "ACG" "AG" S {:d 12 :e 2}
+                              :type :global :gap-model :affine)))
+
+(deftest tikz-affine-alignment-produces-latex
+  (testing "Affine alignment generates valid LaTeX with state styles"
+    (let [output (tikz/tikz-alignment affine-result)]
+      (is (string? output))
+      (is (str/includes? output "\\begin{document}"))
+      (is (str/includes? output "\\begin{tikzpicture}"))
+      ;; State-specific TikZ styles should be present in header
+      (is (str/includes? output "state-M"))
+      (is (str/includes? output "state-X"))
+      (is (str/includes? output "state-Y")))))
 
 (deftest scale-tikz-test
   (testing "Scale returns a pgftransformscale LaTeX command"
