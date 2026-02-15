@@ -110,20 +110,35 @@
 
 (def ^:private state-color {:M "#4477AA" :X "#228833" :Y "#CC6633"})
 
-(defn- render-state-scores [{:keys [row col vm vx vy]} cs active-state]
+(defn- render-state-scores [{:keys [row col vm vx vy]} cs active-state optimal-cells]
   (let [cx (+ (/ cs 2) (* col cs))
         cy (+ (/ cs 2) (* row cs))
         quarter (/ cs 4)
-        opacity (fn [state] (if (or (= active-state :all) (= active-state state)) 1.0 0.3))
+        mask-r (* cs 0.2)
+        font-size (str (* cs 0.14) "px")
+        opacity (fn [state] (cond
+                              (= active-state :optimal)
+                              (if (contains? optimal-cells [row col state]) 1.0 0.3)
+                              (or (= active-state :all) (= active-state state)) 1.0
+                              :else 0.3))
+        mask (fn [val dx dy]
+               (when (some? val)
+                 [:circle {:cx (+ cx dx) :cy (+ cy dy) :r mask-r :fill "white"}]))
         draw-val (fn [val state dx dy]
                    (when (some? val)
                      [:text {:x (+ cx dx) :y (+ cy dy)
                              :text-anchor "middle" :alignment-baseline "middle"
-                             :font-family "Verdana" :font-size "55%"
+                             :font-family "Verdana" :font-size font-size
+                             :fill (state-color state)
                              :opacity (opacity state)} val]))]
     [:g
      [:rect {:x (* col cs) :y (* row cs) :width cs :height cs
              :fill "none" :stroke "gray" :stroke-width 0.2}]
+     ;; White masks behind scores (rendered before text, after arrows)
+     (mask vx quarter (- quarter))
+     (mask vm 0 0)
+     (mask vy (- quarter) quarter)
+     ;; Score text
      (draw-val vx :X quarter (- quarter))
      (draw-val vm :M 0 0)
      (draw-val vy :Y (- quarter) quarter)]))
@@ -139,7 +154,10 @@
         x2 (+ half (* to-col cs) tdx)
         y2 (+ half (* to-row cs) tdy)
         base-color (state-color from-state)
-        opacity (if (or (= active-state :all) (= active-state from-state)) 1.0 0.15)
+        opacity (cond
+                  (= active-state :optimal) (if (= arrow-type :optimal) 1.0 0.08)
+                  (or (= active-state :all) (= active-state from-state)) 1.0
+                  :else 0.15)
         width (if (= arrow-type :optimal) 3 1.5)]
     [:line {:stroke base-color :stroke-width width :opacity opacity
             :x1 x1 :x2 x2 :y1 y1 :y2 y2}]))
@@ -165,7 +183,15 @@
         by-type (group-by :type instructions)
         affine? (seq (:state-scores by-type))
         cs (if affine? affine-cell-size cell-size)
-        active-state (or (:active-state app-state) :all)]
+        active-state (or (:active-state app-state) :all)
+        optimal-cells (when (= active-state :optimal)
+                        (into #{}
+                              (mapcat (fn [{:keys [from-row from-col from-state
+                                                   to-row to-col to-state]}]
+                                        [[from-row from-col from-state]
+                                         [to-row to-col to-state]]))
+                              (filter #(= :optimal (:arrow-type %))
+                                      (:state-arrow by-type))))]
     [:svg {:width   "80%"
            :height  "50%"
            :viewBox (print-str (- cs) (- cs) (str (* (inc cols) cs)) (str (* (inc rows) cs)))
@@ -175,7 +201,7 @@
      (if affine?
        (list
         (map #(render-state-arrow % cs active-state) (:state-arrow by-type))
-        (map #(render-state-scores % cs active-state) (:state-scores by-type))
+        (map #(render-state-scores % cs active-state optimal-cells) (:state-scores by-type))
         (map #(render-seq-label-with-cs % cs) (:seq-label by-type)))
        (list
         (map render-instruction (:dp-arrow by-type))
@@ -316,8 +342,8 @@
 (defn state-toggle [app-state]
   (let [active (or (:active-state @app-state) :all)]
     [:div.btn-group {:style {:margin-bottom "10px"}}
-     (for [s [:all :M :X :Y]
-           :let [label (if (= s :all) "All" (str "V'" (name s)))]]
+     (for [s [:all :M :X :Y :optimal]
+           :let [label (case s :all "All" :optimal "Optimal" (str "V'" (name s)))]]
        ^{:key s}
        [:button.btn.btn-sm.btn-default
         {:class (when (= active s) "active")
