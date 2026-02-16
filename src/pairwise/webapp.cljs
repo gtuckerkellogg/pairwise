@@ -602,6 +602,29 @@
     nil))
 
 ;; ---------------------------------------------------------------------------
+;; References
+;; ---------------------------------------------------------------------------
+
+(defn references-section []
+  [collapsible "References" false
+   [:ol {:class "list-decimal list-inside space-y-2 text-sm text-gray-700"}
+    [:li "Needleman, S.B. & Wunsch, C.D. (1970). A general method applicable to the search for similarities in the amino acid sequence of two proteins. "
+     [:em "J. Mol. Biol."] " 48(3), 443\u2013453."]
+    [:li "Smith, T.F. & Waterman, M.S. (1981). Identification of common molecular subsequences. "
+     [:em "J. Mol. Biol."] " 147(1), 195\u2013197."]
+    [:li "Gotoh, O. (1982). An improved algorithm for matching biological sequences. "
+     [:em "J. Mol. Biol."] " 162(3), 705\u2013708."]
+    [:li "Altschul, S.F. & Erickson, B.W. (1986). Optimal sequence alignment using affine gap costs. "
+     [:em "Bull. Math. Biol."] " 48(5\u20136), 603\u2013616."]
+    [:li "Durbin, R., Eddy, S.R., Krogh, A. & Mitchison, G. (1998). "
+     [:em "Biological Sequence Analysis: Probabilistic Models of Proteins and Nucleic Acids."]
+     " Cambridge University Press."]]
+   [:p {:class "mt-3 text-xs text-gray-500 italic"}
+    "This implementation uses the Altschul & Erickson (1986) three-state formulation (SS-2), "
+    "which correctly enumerates all optimal alignments \u2014 unlike Gotoh\u2019s original (1982) algorithm, "
+    "which can miss the optimum due to incomplete traceback information."]])
+
+;; ---------------------------------------------------------------------------
 ;; Page layout
 ;; ---------------------------------------------------------------------------
 
@@ -660,7 +683,11 @@
 
         ;; Algorithm details (below the tool)
         [:div {:class "mt-8"}
-         [algorithm-details app-state]]]
+         [algorithm-details app-state]]
+
+        ;; References
+        [:div {:class "mt-8"}
+         [references-section]]]
 
        ;; Footer
        [:footer {:class "mt-12 py-6 border-t border-gray-200 text-center text-sm text-gray-500"}
