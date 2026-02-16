@@ -285,8 +285,8 @@
                     #(update-state! app-state :alignment-type :local))]]]
 
      ;; --- Algorithm parameters ---
-     [:div {:class "rounded-lg border border-nus-navy overflow-hidden mb-4"}
-      [:div {:class "bg-nus-navy text-white px-4 py-2 text-sm font-semibold"} "Algorithm Parameters"]
+     [:div {:class "rounded-lg border border-nus-navy mb-4"}
+      [:div {:class "bg-nus-navy text-white px-4 py-2 text-sm font-semibold rounded-t-lg"} "Algorithm Parameters"]
       [:div {:class "px-4 py-3"}
 
        ;; Scoring matrix type
@@ -296,7 +296,7 @@
           [:label "Scoring Matrix"]
           [help-toggle
            (if (= :standard (:scoring-matrix-type state))
-             "Substitution matrices like BLOSUM and PAM encode the evolutionary likelihood of one amino acid replacing another. Higher BLOSUM numbers (e.g., 62 vs 50) are tuned for more closely related sequences."
+             "Substitution matrices like BLOSUM and PAM encode the evolutionary likelihood of one amino acid replacing another. Higher BLOSUM numbers (e.g., 62 vs 50) are tuned for more closely related sequences. PAM numbering works the opposite way: lower numbers (e.g., PAM40) are for closely related sequences, while higher numbers (e.g., PAM250) are for more divergent ones."
              "A simple match/mismatch scheme: identical residues score the match value, different residues score the mismatch value (typically negative).")]]
          [:div {:class "w-2/3"}
           [:label {:class "flex items-center gap-2 text-sm mb-1 cursor-pointer"}
@@ -458,23 +458,31 @@
 ;; Algorithm details (reactive to tool state)
 ;; ---------------------------------------------------------------------------
 
+(defn- render-katex!
+  "Attempt to render LaTeX into a DOM element. Returns true if successful."
+  [el latex display?]
+  (when (and el (exists? js/katex))
+    (js/katex.render latex el #js {:displayMode display? :throwOnError false})
+    true))
+
 (defn- katex-math
-  "Render a LaTeX string using KaTeX. display? true for block math, false for inline."
+  "Render a LaTeX string using KaTeX. display? true for block math, false for inline.
+   Retries rendering if KaTeX hasn't loaded yet (deferred script)."
   [latex & {:keys [display?] :or {display? true}}]
-  (let [ref (reagent/atom nil)]
+  (let [ref (reagent/atom nil)
+        try-render (fn [el latex display?]
+                     (when (and el (not (render-katex! el latex display?)))
+                       ;; KaTeX not loaded yet — retry after a short delay
+                       (js/setTimeout #(render-katex! el latex display?) 100)))]
     (reagent/create-class
      {:display-name "katex-math"
       :component-did-mount
       (fn [_]
-        (when-let [el @ref]
-          (when (exists? js/katex)
-            (js/katex.render latex el #js {:displayMode display? :throwOnError false}))))
+        (try-render @ref latex display?))
       :component-did-update
       (fn [this]
         (let [[_ new-latex] (reagent/argv this)]
-          (when-let [el @ref]
-            (when (exists? js/katex)
-              (js/katex.render new-latex el #js {:displayMode display? :throwOnError false})))))
+          (try-render @ref new-latex display?)))
       :reagent-render
       (fn [_latex & _opts]
         [:span {:ref #(reset! ref %)}])})))
