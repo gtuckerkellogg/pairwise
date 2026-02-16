@@ -259,16 +259,16 @@
      ;; --- Input sequences ---
      [:div {:class "rounded-lg border border-nus-navy overflow-hidden mb-4"}
       [:div {:class "bg-nus-navy text-white px-4 py-2 text-sm font-semibold"}
-       "Input sequences (up to 10 letters)"]
+       "Input two sequences (up to 10 letters each)"]
       [:div {:class "px-4 py-3"}
-       (row "TOP sequence"
+       (row "Sequence 1"
             [:input {:class input-cls
                      :type "text"
                      :value (:top-seq state)
                      :max-length 10
                      :on-change #(update-state! app-state :top-seq
                                                 (sub/sanitise (-> % .-target .-value)))}])
-       (row "BOTTOM sequence"
+       (row "Sequence 2"
             [:input {:class input-cls
                      :type "text"
                      :value (:bottom-seq state)
@@ -670,11 +670,13 @@
           (when (:result @app-state)
             [:div {:class "text-center"}
              [:h3 {:class "text-lg font-semibold text-gray-800 mb-2"}
-              "Dynamic programming matrix visualisation"]
-             (if (= :affine (:gap-model @app-state))
-               [color-legend]
-               [:p {:class "text-sm text-gray-600 mb-2"}
-                "Paths for optimal alignments are indicated in red"])
+              "Dynamic programming matrix visualisation"
+              [help-toggle
+               (if (= :affine (:gap-model @app-state))
+                 "Each cell shows scores from three superimposed matrices: V\u2032M (match/mismatch), V\u2032X (gap in top sequence), and V\u2032Y (gap in bottom sequence). Use the toggles to focus on one matrix at a time, or select Optimal to highlight the best path(s). The recurrences and further details are below the matrix."
+                 "Each cell shows the best alignment score up to that point. Grey arrows show all possible predecessors; red arrows trace the optimal path(s). The recurrence and further details are below the matrix.")]]
+             (when (= :affine (:gap-model @app-state))
+               [color-legend])
              (when (= :affine (:gap-model @app-state))
                [state-toggle app-state])
              [:div (svg-component @app-state)]
