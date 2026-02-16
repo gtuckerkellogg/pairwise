@@ -197,11 +197,10 @@
                                          [to-row to-col to-state]]))
                               (filter #(= :optimal (:arrow-type %))
                                       (:state-arrow by-type))))]
-    [:svg {:width   "80%"
-           :height  "50%"
+    [:svg {:width   "100%"
            :viewBox (print-str (- cs) (- cs) (str (* (inc cols) cs)) (str (* (inc rows) cs)))
            :id    "canvas"
-           :style {:background-color "#fff"}}
+           :style {:background-color "#fff" :max-width "600px"}}
      [:rect {:x 0 :y 0 :width (* cs cols) :height (* cs rows) :fill "none" :stroke "black" :stroke-width 1}]
      (if affine?
        (list
@@ -229,14 +228,13 @@
                  :on-click #(do (.stopPropagation %) (swap! show? not))}
         "?"]
        (when @show?
-         [:div {:class "absolute left-0 top-7 z-10 p-3 bg-blue-50 border border-blue-200 rounded shadow-md text-sm text-gray-700 leading-relaxed font-normal"
-                :style {:min-width "280px" :max-width "400px"}}
+         [:div {:class "absolute left-0 top-7 z-10 p-3 bg-blue-50 border border-blue-200 rounded shadow-md text-sm text-gray-700 leading-relaxed font-normal w-72 sm:w-80 max-w-[calc(100vw-2rem)]"}
           text])])))
 
 (defn- toggle-btn
   "A toggle button for use in button groups."
   [label active? on-click]
-  [:button {:class (str "px-4 py-1.5 text-sm font-medium border transition-colors cursor-pointer "
+  [:button {:class (str "px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium border transition-colors cursor-pointer "
                         (if active?
                           "bg-nus-navy text-white border-nus-navy"
                           "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"))
@@ -244,9 +242,9 @@
    label])
 
 (defn row [label input]
-  [:div {:class "flex items-center gap-4 mb-3"}
-   [:div {:class "w-1/3 text-sm font-medium text-gray-700"} [:label label]]
-   [:div {:class "w-2/3"} input]])
+  [:div {:class "flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mb-3"}
+   [:div {:class "sm:w-1/3 text-sm font-medium text-gray-700"} [:label label]]
+   [:div {:class "sm:w-2/3"} input]])
 
 (defn update-state! [app-state key value]
   (swap! app-state assoc key value)
@@ -296,14 +294,14 @@
 
        ;; Scoring matrix type
        [:div {:class "mb-3"}
-        [:div {:class "flex items-start gap-4"}
-         [:div {:class "w-1/3 text-sm font-medium text-gray-700 pt-1"}
+        [:div {:class "flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4"}
+         [:div {:class "sm:w-1/3 text-sm font-medium text-gray-700 pt-1"}
           [:label "Scoring Matrix"]
           [help-toggle
            (if (= :standard (:scoring-matrix-type state))
              "Substitution matrices like BLOSUM and PAM encode the evolutionary likelihood of one amino acid replacing another. Higher BLOSUM numbers (e.g., 62 vs 50) are tuned for more closely related sequences. PAM numbering works the opposite way: lower numbers (e.g., PAM40) are for closely related sequences, while higher numbers (e.g., PAM250) are for more divergent ones."
              "A simple match/mismatch scheme: identical residues score the match value, different residues score the mismatch value (typically negative).")]]
-         [:div {:class "w-2/3"}
+         [:div {:class "sm:w-2/3"}
           [:label {:class "flex items-center gap-2 text-sm mb-1 cursor-pointer"}
            [:input {:type "radio"
                     :name "scoring-matrix-type"
@@ -344,12 +342,12 @@
 
        ;; Gap model
        [:div {:class "mb-3"}
-        [:div {:class "flex items-center gap-4"}
-         [:div {:class "w-1/3 text-sm font-medium text-gray-700"}
+        [:div {:class "flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4"}
+         [:div {:class "sm:w-1/3 text-sm font-medium text-gray-700"}
           [:label "Gap Model"]
           [help-toggle
            "Linear: each gap position costs the same penalty d. A gap of length k costs k\u00d7d. Affine: opening a new gap costs d, extending it costs e per position. A gap of length k costs d + (k\u22121)\u00d7e. This reflects the biological observation that insertions and deletions tend to occur in contiguous blocks."]]
-        [:div {:class "w-2/3"}
+        [:div {:class "sm:w-2/3"}
          [:div {:class "inline-flex rounded-md shadow-sm overflow-hidden"}
           (toggle-btn "Linear" (= :linear (:gap-model state))
                       #(update-state! app-state :gap-model :linear))
@@ -387,7 +385,7 @@
    [:strong (:score result)]])
 
 (defn color-legend []
-  [:div {:class "mb-2 text-sm flex items-center gap-4"}
+  [:div {:class "mb-2 text-sm flex flex-wrap items-center gap-2 sm:gap-4"}
    [:span "State-aware arrows:"]
    (for [[state label] [[:M "V'M"] [:X "V'X"] [:Y "V'Y"]]]
      ^{:key state}
@@ -398,7 +396,7 @@
 
 (defn state-toggle [app-state]
   (let [active (or (:active-state @app-state) :all)]
-    [:div {:class "inline-flex rounded-md shadow-sm overflow-hidden mb-3"}
+    [:div {:class "inline-flex flex-wrap rounded-md shadow-sm mb-3"}
      (for [s [:all :M :X :Y :optimal]
            :let [label (case s :all "All" :optimal "Optimal" (str "V'" (name s)))]]
        ^{:key s}
@@ -653,7 +651,7 @@
        [:header {:class "bg-nus-navy text-white py-4"}
         [:div {:class "max-w-6xl mx-auto px-4"}
          [:h1 {:class "text-2xl font-bold"} "Pairwise Sequence Alignment"]
-         [:p {:class "text-lg" :style {:color "#EF7C00"}}
+         [:p {:class "text-sm sm:text-lg" :style {:color "#EF7C00"}}
           "Interactive visualisation of dynamic programming alignment algorithms"]]]
 
        ;; Main content
