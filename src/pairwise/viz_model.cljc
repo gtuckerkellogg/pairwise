@@ -92,7 +92,7 @@
         :let [cell (get-in D [r c])
               step (cell-step num-cols [r c])]
         from-state [:M :X :Y]
-        :let [sources (get cell (state-keyword->from-key from-state))]
+        :let [sources (filter some? (get cell (state-keyword->from-key from-state)))]
         :when (seq sources)
         [to-r to-c to-state] sources]
     {:type :state-arrow
@@ -142,13 +142,12 @@
         [rows cols] (matrix/matrix-dimensions D)
         affine? (affine-mode? D)]
     (if affine?
-      (let [scores (cell-scores D cols)
-            st-scores (state-scores D cols)
+      (let [st-scores (state-scores D cols)
             st-dp (state-dp-arrows D cols)
             st-path (state-path-arrows result)
             all-insts (concat [{:type :grid :rows rows :cols cols}]
                               (seq-labels s1 s2)
-                              scores st-scores st-dp st-path)
+                              st-scores st-dp st-path)
             decomp-start (inc (max-step all-insts))]
         {:dimensions {:rows rows :cols cols}
          :sequences {:top s1 :left s2}

@@ -65,21 +65,24 @@
             step (direction-cmd direction) from-row from-col style)))
 
 ;; Sub-region offsets within a cell (diagonal mnemonic)
-;; V'X: upper-right, V'M: center, V'Y: lower-left
+;; TikZ rotated coords: row increases downward, col increases rightward
+;; V'X: upper-right → row decreases, col increases
+;; V'M: center
+;; V'Y: lower-left → row increases, col decreases
 (def ^:private state-offset
-  {:X [ 0.3 -0.3]    ;; upper-right in TikZ rotated coords
+  {:X [-0.3  0.3]    ;; upper-right
    :M [ 0.0  0.0]    ;; center
-   :Y [-0.3  0.3]})  ;; lower-left
+   :Y [ 0.3 -0.3]})  ;; lower-left
 
 (defmethod render-instruction :state-scores [{:keys [row col vm vx vy step]}]
-  (let [fmt (fn [val offset-key scale]
+  (let [fmt (fn [val offset-key scale style]
               (when (some? val)
                 (let [[dr dc] (state-offset offset-key)]
-                  (format "\\visible<%d->{\\draw (%s,%s) node [fill=white,scale=%s] {%s};}\n"
-                          step (+ row dr) (+ col dc) scale val))))]
-    [(fmt vx :X "0.35")
-     (fmt vm :M "0.4")
-     (fmt vy :Y "0.35")]))
+                  (format "\\visible<%d->{\\draw (%s,%s) node [draw=none,inner sep=1pt,scale=%s,%s] {%s};}\n"
+                          step (+ row dr) (+ col dc) scale style val))))]
+    [(fmt vx :X "0.35" "state-X")
+     (fmt vm :M "0.4" "state-M")
+     (fmt vy :Y "0.35" "state-Y")]))
 
 (defmethod render-instruction :state-arrow [{:keys [from-row from-col from-state
                                                      to-row to-col to-state
@@ -99,7 +102,7 @@
   [row col val offset-key scale style-suffix step]
   (when (some? val)
     (let [[dr dc] (state-offset offset-key)]
-      (format "\\visible<%d>{\\draw (%s,%s) node [fill=white,scale=%s,%s] {%s};}\n"
+      (format "\\visible<%d>{\\draw (%s,%s) node [draw=none,inner sep=1pt,scale=%s,%s] {%s};}\n"
               step (+ row dr) (+ col dc) scale style-suffix val))))
 
 (defn- render-decomp-arrow

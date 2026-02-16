@@ -199,6 +199,7 @@
       (fn [node]
         (let [entry (get graph node)]
           (or (nil? (:from entry))
+              (empty? (:from entry))
               (<= (:score entry) 0)))))))
 
 (defmethod alignment/graph-of :affine
@@ -211,5 +212,8 @@
                                        [:X :vx :from-x]
                                        [:Y :vy :from-y]]
           :when (some? (get cell score-key))]
+      ;; Filter nil sources (local alignment free restarts have nil in :from-m)
       [[r c state] {:score (get cell score-key)
-                    :from  (get cell from-key)}])))
+                    :from  (let [sources (get cell from-key)]
+                             (when sources
+                               (filterv some? sources)))}])))

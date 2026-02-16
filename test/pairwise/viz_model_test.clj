@@ -198,11 +198,10 @@
     (let [model (viz/alignment->instructions affine-result)
           types (set (map :type (:instructions model)))]
       (is (contains? types :grid))
-      (is (contains? types :cell-score))
       (is (contains? types :state-scores))
       (is (contains? types :state-arrow))
-      ;; All cell-score instructions have numeric scores
-      (is (every? number? (map :score (instructions-of-type model :cell-score)))))))
+      ;; Affine mode uses :state-scores instead of :cell-score
+      (is (not (contains? types :cell-score))))))
 
 ;; ---------------------------------------------------------------------------
 ;; Larger alignment
