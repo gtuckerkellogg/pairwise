@@ -371,6 +371,58 @@
                    #(swap! app-state assoc :active-state s)))]))
 
 ;; ---------------------------------------------------------------------------
+;; Collapsible sections
+;; ---------------------------------------------------------------------------
+
+(defn collapsible
+  "Collapsible section. title is a string, open? is initial state, body is hiccup."
+  [title open? & _body]
+  (let [expanded (reagent/atom open?)]
+    (fn [title _open? & body]
+      [:div {:class "mb-6 rounded-lg border border-gray-200 overflow-hidden"}
+       [:button {:class "w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 text-left font-semibold text-nus-navy transition-colors cursor-pointer"
+                 :on-click #(swap! expanded not)}
+        [:span title]
+        [:span {:class (str "transform transition-transform duration-200 "
+                            (when @expanded "rotate-180"))} "\u25be"]]
+       (when @expanded
+         [:div {:class "px-4 py-3 border-t border-gray-200 text-sm text-gray-700 leading-relaxed"}
+          (into [:<>] body)])])))
+
+;; ---------------------------------------------------------------------------
+;; Introduction section
+;; ---------------------------------------------------------------------------
+
+(defn introduction-section []
+  [collapsible "About this tool" true
+   [:div
+    [:p {:class "mb-3"}
+     "Pairwise alignment compares two biological sequences to identify regions of similarity. "
+     "Using dynamic programming, we fill a scoring matrix where each cell represents the best "
+     "alignment score up to that point. The optimal alignment(s) are found by tracing back "
+     "through the matrix \u2014 when multiple paths achieve the same score, all optimal alignments "
+     "are reported."]
+    [:p {:class "mb-3"}
+     "Two classical algorithms solve this problem: "
+     [:strong "Needleman-Wunsch"] " (1970) for global alignment (comparing sequences end-to-end) and "
+     [:strong "Smith-Waterman"] " (1981) for local alignment (finding the highest-scoring subsequence pair). "
+     "Both can use either a simple " [:strong "linear gap penalty"] " or the more realistic "
+     [:strong "affine gap model"] " (Gotoh, 1982), which distinguishes between opening and extending a gap."]
+    [:p {:class "mb-3 italic text-gray-500"}
+     "The default sequences (HEAGAWGHEE / PAWHEAE) and BLOSUM50 matrix reproduce the example "
+     "from Durbin et al. (1998), Ch. 2."]
+    [collapsible "Why align sequences?" false
+     [:p {:class "mb-3"}
+      "Sequence similarity often implies shared evolutionary origin (homology). "
+      "Aligning protein or DNA sequences reveals conserved regions that may share function "
+      "or structure. Pairwise alignment is the foundation of database search tools like "
+      "BLAST and FASTA, multiple sequence alignment, and phylogenetic analysis."]
+     [:p
+      "The dynamic programming approach guarantees finding the mathematically optimal "
+      "alignment(s) given a scoring scheme \u2014 unlike heuristic methods that trade optimality "
+      "for speed."]]]])
+
+;; ---------------------------------------------------------------------------
 ;; Page layout
 ;; ---------------------------------------------------------------------------
 
@@ -399,6 +451,7 @@
 
        ;; Main content
        [:main {:class "max-w-6xl mx-auto px-4 py-8 flex-1 w-full"}
+        [introduction-section]
         ;; Tool: controls + visualization
         [:div {:class "flex flex-col md:flex-row gap-6"}
          ;; Left: controls + results
