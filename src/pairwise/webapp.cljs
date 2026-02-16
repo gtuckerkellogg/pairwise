@@ -80,7 +80,7 @@
     [:g
      (render-mask inst)
      [:rect {:x x :y y :width cell-size :height cell-size :fill "none" :stroke "gray" :stroke-width 0.2}]
-     [:text {:x (+ x half-cell) :y (+ y half-cell) :text-anchor "middle" :alignment-baseline "middle" :font-family "Verdana" :font-size "70%" :stroke "black"} score]]))
+     [:text {:x (+ x half-cell) :y (+ y half-cell) :text-anchor "middle" :alignment-baseline "middle" :font-family "Verdana, Arial, Helvetica, sans-serif" :font-size "70%" :stroke "black"} score]]))
 
 (defmethod render-instruction :seq-label [{:keys [axis index char]}]
   (case axis
@@ -108,14 +108,14 @@
       :M [0 0]
       :Y [(- quarter) quarter])))
 
-(def ^:private state-color {:M "#4477AA" :X "#228833" :Y "#CC6633"})
+(def ^:private state-color {:M "#56B4E9" :X "#E69F00" :Y "#009E73"})
 
 (defn- render-state-scores [{:keys [row col vm vx vy]} cs active-state optimal-cells]
   (let [cx (+ (/ cs 2) (* col cs))
         cy (+ (/ cs 2) (* row cs))
         quarter (/ cs 4)
         mask-r (* cs 0.2)
-        font-size (str (* cs 0.14) "px")
+        font-size (str (* cs 0.20) "px")
         opacity (fn [state] (cond
                               (= active-state :optimal)
                               (if (contains? optimal-cells [row col state]) 1.0 0.3)
@@ -128,7 +128,7 @@
                    (when (some? val)
                      [:text {:x (+ cx dx) :y (+ cy dy)
                              :text-anchor "middle" :alignment-baseline "middle"
-                             :font-family "Verdana" :font-size font-size
+                             :font-family "Verdana, Arial, Helvetica, sans-serif" :font-size font-size
                              :fill (state-color state)
                              :opacity (opacity state)} val]))]
     [:g
@@ -158,7 +158,7 @@
                   (= active-state :optimal) (if (= arrow-type :optimal) 1.0 0.08)
                   (or (= active-state :all) (= active-state from-state)) 1.0
                   :else 0.15)
-        width (if (= arrow-type :optimal) 3 1.5)]
+        width (if (= arrow-type :optimal) 4 1.5)]
     [:line {:stroke base-color :stroke-width width :opacity opacity
             :x1 x1 :x2 x2 :y1 y1 :y2 y2}]))
 
