@@ -210,160 +210,169 @@
         (map render-instruction (:seq-label by-type))))]))
 
 ;; ---------------------------------------------------------------------------
-;; Form components (unchanged)
+;; Form components
 ;; ---------------------------------------------------------------------------
 
+(defn- toggle-btn
+  "A toggle button for use in button groups."
+  [label active? on-click]
+  [:button {:class (str "px-4 py-1.5 text-sm font-medium border transition-colors cursor-pointer "
+                        (if active?
+                          "bg-nus-navy text-white border-nus-navy"
+                          "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"))
+            :on-click on-click}
+   label])
+
 (defn row [label input]
-  [:div.row
-   [:div.col-md-4  [:label label]]
-   [:div.col-md-8 input]])
+  [:div {:class "flex items-center gap-4 mb-3"}
+   [:div {:class "w-1/3 text-sm font-medium text-gray-700"} [:label label]]
+   [:div {:class "w-2/3"} input]])
 
 (defn update-state! [app-state key value]
   (swap! app-state assoc key value)
   (swap! app-state assoc :result (app-results @app-state)))
 
 (defn form-component [app-state]
-  (let [state @app-state]
+  (let [state @app-state
+        input-cls "w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-nus-navy focus:border-nus-navy"]
     [:div
-     [:div {:class "panel panel-primary"}
-      [:div.panel-heading (str "Input sequences (up to " (if (= :affine (:gap-model state)) 7 10) " letters)")]
-      [:div.panel-body
+     ;; --- Input sequences ---
+     [:div {:class "rounded-lg border border-nus-navy overflow-hidden mb-4"}
+      [:div {:class "bg-nus-navy text-white px-4 py-2 text-sm font-semibold"}
+       (str "Input sequences (up to " (if (= :affine (:gap-model state)) 7 10) " letters)")]
+      [:div {:class "px-4 py-3"}
        (row "TOP sequence"
-            [:input.form-control {:type "text"
-                                  :value (:top-seq state)
-                                  :max-length (if (= :affine (:gap-model state)) 7 10)
-                                  :on-change #(update-state! app-state :top-seq
-                                                           (sub/sanitise (-> % .-target .-value)))}])
-
+            [:input {:class input-cls
+                     :type "text"
+                     :value (:top-seq state)
+                     :max-length (if (= :affine (:gap-model state)) 7 10)
+                     :on-change #(update-state! app-state :top-seq
+                                                (sub/sanitise (-> % .-target .-value)))}])
        (row "BOTTOM sequence"
-            [:input.form-control {:type "text"
-                                  :value (:bottom-seq state)
-                                  :max-length (if (= :affine (:gap-model state)) 7 10)
-                                  :on-change #(update-state! app-state :bottom-seq
-                                                           (sub/sanitise (-> % .-target .-value)))}])]]
+            [:input {:class input-cls
+                     :type "text"
+                     :value (:bottom-seq state)
+                     :max-length (if (= :affine (:gap-model state)) 7 10)
+                     :on-change #(update-state! app-state :bottom-seq
+                                                (sub/sanitise (-> % .-target .-value)))}])]]
 
-     [:div {:class "panel panel-primary"}
-      [:div.panel-heading "Alignment type"]
-      [:div.panel-body
-       [:div.btn-group
-        [:button.btn.btn-default {:class (when (= :global (:alignment-type state)) "active")
-                                  :on-click #(update-state! app-state :alignment-type :global)}
-         "Needleman-Wunsch"]
-        [:button.btn.btn-default {:class (when (= :local (:alignment-type state)) "active")
-                                  :on-click #(update-state! app-state :alignment-type :local)}
-         "Smith-Waterman"]]]]
+     ;; --- Alignment type ---
+     [:div {:class "rounded-lg border border-nus-navy overflow-hidden mb-4"}
+      [:div {:class "bg-nus-navy text-white px-4 py-2 text-sm font-semibold"} "Alignment type"]
+      [:div {:class "px-4 py-3"}
+       [:div {:class "inline-flex rounded-md shadow-sm overflow-hidden"}
+        (toggle-btn "Needleman-Wunsch" (= :global (:alignment-type state))
+                    #(update-state! app-state :alignment-type :global))
+        (toggle-btn "Smith-Waterman" (= :local (:alignment-type state))
+                    #(update-state! app-state :alignment-type :local))]]]
 
-     [:div {:class "panel panel-primary"}
-      [:div.panel-heading "Algorithm Parameters"]
-      [:div.panel-body
+     ;; --- Algorithm parameters ---
+     [:div {:class "rounded-lg border border-nus-navy overflow-hidden mb-4"}
+      [:div {:class "bg-nus-navy text-white px-4 py-2 text-sm font-semibold"} "Algorithm Parameters"]
+      [:div {:class "px-4 py-3"}
 
-       [:div.row
-        [:div.col-md-4 {:vertical-align "middle"} [:label  "Scoring Matrix"]]
-        [:div.col-md-8
-         [:div
-          [:label
-           [:input {:type "radio"
-                    :name "scoring-matrix-type"
-                    :value "simple"
-                    :checked (= :simple (:scoring-matrix-type state))
-                    :on-change #(update-state! app-state :scoring-matrix-type :simple)}]
-           " User-defined"]]
-         [:div
-          [:label
-           [:input {:type "radio"
-                    :name "scoring-matrix-type"
-                    :value "standard"
-                    :checked (= :standard (:scoring-matrix-type state))
-                    :on-change #(update-state! app-state :scoring-matrix-type :standard)}]
-           " Standard"]]]]
+       ;; Scoring matrix type
+       [:div {:class "flex items-start gap-4 mb-3"}
+        [:div {:class "w-1/3 text-sm font-medium text-gray-700 pt-1"} [:label "Scoring Matrix"]]
+        [:div {:class "w-2/3"}
+         [:label {:class "flex items-center gap-2 text-sm mb-1 cursor-pointer"}
+          [:input {:type "radio"
+                   :name "scoring-matrix-type"
+                   :value "simple"
+                   :checked (= :simple (:scoring-matrix-type state))
+                   :on-change #(update-state! app-state :scoring-matrix-type :simple)}]
+          "User-defined"]
+         [:label {:class "flex items-center gap-2 text-sm cursor-pointer"}
+          [:input {:type "radio"
+                   :name "scoring-matrix-type"
+                   :value "standard"
+                   :checked (= :standard (:scoring-matrix-type state))
+                   :on-change #(update-state! app-state :scoring-matrix-type :standard)}]
+          "Standard"]]]
 
+       ;; Simple matrix sliders
        (when (= :simple (:scoring-matrix-type state))
-         [:div.form-group
+         [:div {:class "mb-3"}
           (row [:label "match: " (:match-score state)]
-               [:input.form-control
-                {:type "range" :min 0 :max 15
-                 :value (:match-score state)
-                 :on-change #(update-state! app-state :match-score
-                                          (js/parseInt (-> % .-target .-value)))}])
+               [:input {:class "w-full" :type "range" :min 0 :max 15
+                        :value (:match-score state)
+                        :on-change #(update-state! app-state :match-score
+                                                   (js/parseInt (-> % .-target .-value)))}])
           (row [:label "mismatch: " (:mismatch-score state)]
-               [:input.form-control
-                {:type "range" :min -10 :max 0
-                 :value (:mismatch-score state)
-                 :on-change #(update-state! app-state :mismatch-score
-                                          (js/parseInt (-> % .-target .-value)))}])])
+               [:input {:class "w-full" :type "range" :min -10 :max 0
+                        :value (:mismatch-score state)
+                        :on-change #(update-state! app-state :mismatch-score
+                                                   (js/parseInt (-> % .-target .-value)))}])])
 
+       ;; Standard matrix selector
        (when (= :standard (:scoring-matrix-type state))
-         [:select.form-control {:value (:scoring-matrix state)
-                                :on-change #(update-state! app-state :scoring-matrix
-                                                         (keyword (-> % .-target .-value)))}
-          (map (fn [[k v]] [:option {:key k :value k} (:name v)]) scoring-matrices)])
+         [:div {:class "mb-3"}
+          [:select {:class input-cls
+                    :value (:scoring-matrix state)
+                    :on-change #(update-state! app-state :scoring-matrix
+                                               (keyword (-> % .-target .-value)))}
+           (map (fn [[k v]] [:option {:key k :value k} (:name v)]) scoring-matrices)]])
 
-       [:div.row
-        [:div.col-md-4 [:label "Gap Model"]]
-        [:div.col-md-8
-         [:div.btn-group
-          [:button.btn.btn-default {:class (when (= :linear (:gap-model state)) "active")
-                                    :on-click #(update-state! app-state :gap-model :linear)}
-           "Linear"]
-          [:button.btn.btn-default {:class (when (= :affine (:gap-model state)) "active")
-                                    :on-click #(update-state! app-state :gap-model :affine)}
-           "Affine"]]]]
+       ;; Gap model
+       [:div {:class "flex items-center gap-4 mb-3"}
+        [:div {:class "w-1/3 text-sm font-medium text-gray-700"} [:label "Gap Model"]]
+        [:div {:class "w-2/3"}
+         [:div {:class "inline-flex rounded-md shadow-sm overflow-hidden"}
+          (toggle-btn "Linear" (= :linear (:gap-model state))
+                      #(update-state! app-state :gap-model :linear))
+          (toggle-btn "Affine" (= :affine (:gap-model state))
+                      #(update-state! app-state :gap-model :affine))]]]
 
+       ;; Gap parameters
        (if (= :affine (:gap-model state))
          [:div
           (row [:label "Gap open (d): " (:gap-open state)]
-               [:input.form-control
-                {:type "range" :min 1 :max 20
-                 :value (:gap-open state)
-                 :on-change #(update-state! app-state :gap-open
-                                           (js/parseInt (-> % .-target .-value)))}])
+               [:input {:class "w-full" :type "range" :min 1 :max 20
+                        :value (:gap-open state)
+                        :on-change #(update-state! app-state :gap-open
+                                                   (js/parseInt (-> % .-target .-value)))}])
           (row [:label "Gap extend (e): " (:gap-extend state)]
-               [:input.form-control
-                {:type "range" :min 1 :max 10
-                 :value (:gap-extend state)
-                 :on-change #(update-state! app-state :gap-extend
-                                           (js/parseInt (-> % .-target .-value)))}])]
+               [:input {:class "w-full" :type "range" :min 1 :max 10
+                        :value (:gap-extend state)
+                        :on-change #(update-state! app-state :gap-extend
+                                                   (js/parseInt (-> % .-target .-value)))}])]
          (row [:label "Linear gap penalty: " (:gap-penalty state)]
-              [:input.form-control
-               {:type "range" :min 0 :max 15
-                :value (:gap-penalty state)
-                :on-change #(update-state! app-state :gap-penalty
-                                         (js/parseInt (-> % .-target .-value)))}]))]]]))
+              [:input {:class "w-full" :type "range" :min 0 :max 15
+                       :value (:gap-penalty state)
+                       :on-change #(update-state! app-state :gap-penalty
+                                                  (js/parseInt (-> % .-target .-value)))}]))]]]))
 
 (defn display-alignment [{:keys [top bottom]}]
-  ^{:key (swap! app-item-id inc)} [:p top [:br] bottom [:br] [:br]])
+  ^{:key (swap! app-item-id inc)}
+  [:p {:class "font-mono text-sm"} top [:br] bottom [:br] [:br]])
 
 (defn summarize-alignment [{:keys [sequence-type alignment-type result]}]
   [:span (str/capitalize (name alignment-type)) " "
    (name sequence-type) " alignment score: "
    [:strong (:score result)]])
 
-
 (defn color-legend []
-  [:div {:style {:margin-bottom "10px" :font-size "14px"}}
-   "State-aware arrows: "
+  [:div {:class "mb-2 text-sm flex items-center gap-4"}
+   [:span "State-aware arrows:"]
    (for [[state label] [[:M "V'M"] [:X "V'X"] [:Y "V'Y"]]]
      ^{:key state}
-     [:span {:style {:margin-right "15px"}}
-      [:span {:style {:display "inline-block"
-                      :width "12px"
-                      :height "12px"
-                      :background-color (state-color state)
-                      :border "1px solid #666"
-                      :margin-right "4px"
-                      :vertical-align "middle"}}]
+     [:span {:class "flex items-center gap-1"}
+      [:span {:class "inline-block w-3 h-3 border border-gray-500"
+              :style {:background-color (state-color state)}}]
       label])])
 
 (defn state-toggle [app-state]
   (let [active (or (:active-state @app-state) :all)]
-    [:div.btn-group {:style {:margin-bottom "10px"}}
+    [:div {:class "inline-flex rounded-md shadow-sm overflow-hidden mb-3"}
      (for [s [:all :M :X :Y :optimal]
            :let [label (case s :all "All" :optimal "Optimal" (str "V'" (name s)))]]
        ^{:key s}
-       [:button.btn.btn-sm.btn-default
-        {:class (when (= active s) "active")
-         :on-click #(swap! app-state assoc :active-state s)}
-        label])]))
+       (toggle-btn label (= active s)
+                   #(swap! app-state assoc :active-state s)))]))
+
+;; ---------------------------------------------------------------------------
+;; Page layout
+;; ---------------------------------------------------------------------------
 
 (defn page []
   (let [app-state (atom {:top-seq     "HEAGAWGHEE"
@@ -377,46 +386,51 @@
                          :sequence-type  :protein
                          :alignment-type :global
                          :match-score     5
-                         :mismatch-score -3
-                         })]
+                         :mismatch-score -3})]
     (swap! app-state assoc :result (app-results @app-state))
     (fn []
-      [:div
-       [:div.page-header [:h1.text-center "Optimal pairwise sequence alignment" ] ]
+      [:div {:class "flex flex-col min-h-screen"}
+       ;; Header
+       [:header {:class "bg-nus-navy text-white py-8"}
+        [:div {:class "max-w-6xl mx-auto px-4 text-center"}
+         [:h1 {:class "text-3xl font-bold"} "Pairwise Sequence Alignment"]
+         [:p {:class "mt-2 text-lg text-blue-200"}
+          "Interactive visualization of dynamic programming alignment algorithms"]]]
 
-       [:div.row
-        [:div {:class "col-md-4"}
-         [:div.row [form-component app-state]]
-         [:div.row
+       ;; Main content
+       [:main {:class "max-w-6xl mx-auto px-4 py-8 flex-1 w-full"}
+        ;; Tool: controls + visualization
+        [:div {:class "flex flex-col md:flex-row gap-6"}
+         ;; Left: controls + results
+         [:div {:class "md:w-1/3"}
+          [form-component app-state]
           (when (:result @app-state)
-            [:div {:class "panel panel-info"}
-             [:div.panel-heading {:class "text-center"} (summarize-alignment @app-state)]
-             [:div.panel-body
-              [:div.row
-               [:pre  (map display-alignment (:alignments (:result @app-state)))]
-               ]
-              ]
-             ])
+            [:div {:class "rounded-lg border border-nus-orange overflow-hidden"}
+             [:div {:class "bg-nus-orange-light text-nus-navy px-4 py-2 text-center font-semibold text-sm"}
+              (summarize-alignment @app-state)]
+             [:div {:class "px-4 py-3"}
+              [:pre {:class "text-sm whitespace-pre-wrap"}
+               (map display-alignment (:alignments (:result @app-state)))]]])]
 
-          ]]
-        [:div {:class "col-md-8"}
-         [:div.row
+         ;; Right: visualization
+         [:div {:class "md:w-2/3"}
           (when (:result @app-state)
-            [:div {:class "text-center" :margin-left "5%"}
-             [:div.panel-heading [:h3 "Dynamic programming matrix visualisation"]
-              (if (= :affine (:gap-model @app-state))
-                [color-legend]
-                "Paths for optimal alignments are indicated in red")]
+            [:div {:class "text-center"}
+             [:h3 {:class "text-lg font-semibold text-gray-800 mb-2"}
+              "Dynamic programming matrix visualisation"]
+             (if (= :affine (:gap-model @app-state))
+               [color-legend]
+               [:p {:class "text-sm text-gray-600 mb-2"}
+                "Paths for optimal alignments are indicated in red"])
              (when (= :affine (:gap-model @app-state))
                [state-toggle app-state])
-             [:div.panel-body
-              [:div.row (svg-component @app-state)]]
-             ])]]
-        ]
+             [:div (svg-component @app-state)]])]]]
 
-
-
-       ])))
+       ;; Footer
+       [:footer {:class "mt-12 py-6 border-t border-gray-200 text-center text-sm text-gray-500"}
+        [:p "Created by "
+         [:a {:href "mailto:dbsgtk@nus.edu.sg"
+              :class "text-nus-navy hover:underline"} "Greg Tucker-Kellogg"]]]])))
 
 (defn init []
   (rdom/render [page]
