@@ -218,17 +218,18 @@
 ;; ---------------------------------------------------------------------------
 
 (defn help-toggle
-  "A (?) icon that toggles inline help text. Uses a shared atom so only one
-   help popup is open at a time. The expanded text renders below the label row."
-  [_text]
+  "A (?) icon that toggles inline help text. Optional :align :right anchors
+   the popup to the right edge instead of the left."
+  [_text & {:keys [align]}]
   (let [show? (reagent/atom false)]
-    (fn [text]
+    (fn [text & {:keys [align]}]
       [:span {:class "relative"}
        [:button {:class "ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-nus-navy text-white text-xs hover:bg-nus-orange transition-colors cursor-pointer align-middle"
                  :on-click #(do (.stopPropagation %) (swap! show? not))}
         "?"]
        (when @show?
-         [:div {:class "absolute left-0 top-7 z-10 p-3 bg-blue-50 border border-blue-200 rounded shadow-md text-sm text-gray-700 leading-relaxed font-normal w-72 sm:w-80 max-w-[calc(100vw-2rem)]"}
+         [:div {:class (str "absolute top-7 z-10 p-3 bg-blue-50 border border-blue-200 rounded shadow-md text-sm text-gray-700 leading-relaxed font-normal w-72 sm:w-80 max-w-[calc(100vw-2rem)] "
+                            (if (= align :right) "right-0" "left-0"))}
           text])])))
 
 (defn- toggle-btn
@@ -672,7 +673,8 @@
               [help-toggle
                (if (= :affine (:gap-model @app-state))
                  "Each cell shows scores from three superimposed matrices: V\u2032M (match/mismatch), V\u2032X (gap in top sequence), and V\u2032Y (gap in bottom sequence). Use the toggles to focus on one matrix at a time, or select Optimal to highlight the best path(s). The recurrences and further details are below the matrix."
-                 "Each cell shows the best alignment score up to that point. Grey arrows show all possible predecessors; red arrows trace the optimal path(s). The recurrence and further details are below the matrix.")]]
+                 "Each cell shows the best alignment score up to that point. Grey arrows show all possible predecessors; red arrows trace the optimal path(s). The recurrence and further details are below the matrix.")
+               :align :right]]
              (when (= :affine (:gap-model @app-state))
                [color-legend])
              (when (= :affine (:gap-model @app-state))
