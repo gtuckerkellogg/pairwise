@@ -27,7 +27,7 @@
 
 (defonce app-item-id (atom 0))
 
-(def cell-size 50)
+(def cell-size 80)
 (def half-cell (/ cell-size 2))
 
 (defn app-results [app-state]
@@ -60,27 +60,32 @@
         y1 (+ half-cell (* from-row cell-size))
         x2 (+ half-cell (* to-col cell-size))
         y2 (+ half-cell (* to-row cell-size))]
-    [:line {:stroke "gray" :stroke-width 2 :x1 x1 :x2 x2 :y1 y1 :y2 y2}]))
+    [:line {:stroke "#9CA3AF" :stroke-width 1.5 :opacity 0.6
+            :x1 x1 :x2 x2 :y1 y1 :y2 y2}]))
 
 (defmethod render-instruction :path-arrow [{:keys [from-row from-col to-row to-col]}]
   (let [x1 (+ half-cell (* from-col cell-size))
         y1 (+ half-cell (* from-row cell-size))
         x2 (+ half-cell (* to-col cell-size))
         y2 (+ half-cell (* to-row cell-size))]
-    [:line {:stroke "red" :stroke-width 4 :x1 x1 :x2 x2 :y1 y1 :y2 y2}]))
+    [:line {:stroke "#DC2626" :stroke-width 4 :x1 x1 :x2 x2 :y1 y1 :y2 y2}]))
 
 (defn- render-mask [{:keys [row col]}]
   (let [cx (+ half-cell (* col cell-size))
-        cy (+ half-cell (* row cell-size))]
-    [:circle {:cx cx :cy cy :r 12 :fill "white"}]))
+        cy (+ half-cell (* row cell-size))
+        mask-r (* cell-size 0.2)]
+    [:circle {:cx cx :cy cy :r mask-r :fill "white"}]))
 
 (defmethod render-instruction :cell-score [{:keys [row col score] :as inst}]
   (let [x (* col cell-size)
-        y (* row cell-size)]
+        y (* row cell-size)
+        font-size (str (* cell-size 0.20) "px")]
     [:g
      (render-mask inst)
      [:rect {:x x :y y :width cell-size :height cell-size :fill "none" :stroke "gray" :stroke-width 0.2}]
-     [:text {:x (+ x half-cell) :y (+ y half-cell) :text-anchor "middle" :alignment-baseline "middle" :font-family "Verdana, Arial, Helvetica, sans-serif" :font-size "70%" :stroke "black"} score]]))
+     [:text {:x (+ x half-cell) :y (+ y half-cell) :text-anchor "middle" :alignment-baseline "middle"
+             :font-family "Verdana, Arial, Helvetica, sans-serif" :font-size font-size
+             :fill "#1F2937"} score]]))
 
 (defmethod render-instruction :seq-label [{:keys [axis index char]}]
   (case axis
@@ -254,20 +259,20 @@
      ;; --- Input sequences ---
      [:div {:class "rounded-lg border border-nus-navy overflow-hidden mb-4"}
       [:div {:class "bg-nus-navy text-white px-4 py-2 text-sm font-semibold"}
-       (str "Input sequences (up to " (if (= :affine (:gap-model state)) 7 10) " letters)")]
+       "Input sequences (up to 10 letters)"]
       [:div {:class "px-4 py-3"}
        (row "TOP sequence"
             [:input {:class input-cls
                      :type "text"
                      :value (:top-seq state)
-                     :max-length (if (= :affine (:gap-model state)) 7 10)
+                     :max-length 10
                      :on-change #(update-state! app-state :top-seq
                                                 (sub/sanitise (-> % .-target .-value)))}])
        (row "BOTTOM sequence"
             [:input {:class input-cls
                      :type "text"
                      :value (:bottom-seq state)
-                     :max-length (if (= :affine (:gap-model state)) 7 10)
+                     :max-length 10
                      :on-change #(update-state! app-state :bottom-seq
                                                 (sub/sanitise (-> % .-target .-value)))}])]]
 
@@ -431,12 +436,12 @@
       "Pairwise alignment compares two biological sequences to identify regions of similarity. "
       "Using dynamic programming, we fill a scoring matrix where each cell represents the best "
       "alignment score up to that point. The optimal alignment(s) are found by tracing back "
-      "through the matrix \u2014 when multiple paths achieve the same score, all optimal alignments "
+      "through the matrix. When multiple paths achieve the same score, all optimal alignments "
       "are reported."]
       [:p {:class "mb-3"}
       "Students learning about parwise sequence alignment often study visualisations of the dynamic programming "
-      "problem, but these visualisations are usually static and restricted to a single problem. "
-      "This tool provides interactive visualisations of landmark dynamic programming algorithms "
+      "matrix, but these visualisations are usually static and restricted to a single problem. "
+      [:strong "This tool provides interactive visualisations of landmark dynamic programming algorithms "]
       "for pairwise alignment, allowing students and instructors to change scoring systems and sequences."
       ]
      [:p {:class "mb-3"}
@@ -457,7 +462,7 @@
       "BLAST and FASTA, multiple sequence alignment, and phylogenetic analysis."]
      [:p
       "The dynamic programming approach guarantees finding the mathematically optimal "
-      "alignment(s) given a scoring scheme \u2014 unlike heuristic methods that trade optimality "
+      "alignment(s) given a scoring scheme, unlike heuristic methods that trade optimality "
       "for speed."]]]])
 
 ;; ---------------------------------------------------------------------------
@@ -510,7 +515,7 @@
         "The Needleman-Wunsch algorithm fills the entire matrix to find the best global alignment. Each cell F(i,j) represents the optimal score for aligning the first i residues of one sequence with the first j residues of the other."
         "The Smith-Waterman algorithm modifies the global recurrence by adding zero as an option \u2014 allowing alignments to start anywhere. Traceback begins at the highest-scoring cell(s) and stops when a zero is reached.")]
      [:div {:class "mt-3"}
-      [:p {:class "mb-2 text-sm font-semibold text-gray-600"} "Initialization:"]
+      [:p {:class "mb-2 text-sm font-semibold text-gray-600"} "Initialisation:"]
       [recurrence-block
        (if global?
          "F(i, 0) = -i \\times d \\qquad F(0, j) = -j \\times d"
@@ -646,28 +651,21 @@
       [:div {:class "flex flex-col min-h-screen"}
        ;; Header
        [:header {:class "bg-nus-navy text-white py-4"}
-        [:div {:class "max-w-6xl mx-auto px-4 flex items-baseline justify-between"}
+        [:div {:class "max-w-6xl mx-auto px-4"}
          [:h1 {:class "text-2xl font-bold"} "Pairwise Sequence Alignment"]
-         [:p {:class "text-sm text-blue-200"}
-          "Interactive visualization of DP alignment algorithms"]]]
+         [:p {:class "text-lg" :style {:color "#EF7C00"}}
+          "Interactive visualisation of dynamic programming alignment algorithms"]]]
 
        ;; Main content
        [:main {:class "max-w-6xl mx-auto px-4 py-4 flex-1 w-full"}
         [introduction-section]
-        ;; Tool: controls + visualization
+        ;; Tool: controls + visualisation
         [:div {:class "flex flex-col md:flex-row gap-6"}
-         ;; Left: controls + results
+         ;; Left: controls (input)
          [:div {:class "md:w-1/3"}
-          [form-component app-state]
-          (when (:result @app-state)
-            [:div {:class "rounded-lg border border-nus-orange overflow-hidden"}
-             [:div {:class "bg-nus-orange-light text-nus-navy px-4 py-2 text-center font-semibold text-sm"}
-              (summarize-alignment @app-state)]
-             [:div {:class "px-4 py-3"}
-              [:pre {:class "text-sm whitespace-pre-wrap"}
-               (map display-alignment (:alignments (:result @app-state)))]]])]
+          [form-component app-state]]
 
-         ;; Right: visualization
+         ;; Right: visualisation + results
          [:div {:class "md:w-2/3"}
           (when (:result @app-state)
             [:div {:class "text-center"}
@@ -679,7 +677,15 @@
                 "Paths for optimal alignments are indicated in red"])
              (when (= :affine (:gap-model @app-state))
                [state-toggle app-state])
-             [:div (svg-component @app-state)]])]]
+             [:div (svg-component @app-state)]
+             ;; Alignment results below the matrix
+             [:div {:class "mt-4 text-left"}
+              [:div {:class "rounded-lg border border-nus-orange overflow-hidden"}
+               [:div {:class "bg-nus-orange-light text-nus-navy px-4 py-2 text-center font-semibold text-sm"}
+                (summarize-alignment @app-state)]
+               [:div {:class "px-4 py-3"}
+                [:pre {:class "text-sm whitespace-pre-wrap"}
+                 (map display-alignment (:alignments (:result @app-state)))]]]]])]]
 
         ;; Algorithm details (below the tool)
         [:div {:class "mt-8"}
