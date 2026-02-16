@@ -449,6 +449,73 @@
       "for speed."]]]])
 
 ;; ---------------------------------------------------------------------------
+;; Algorithm details (reactive to tool state)
+;; ---------------------------------------------------------------------------
+
+(defn- math-span
+  "Render text in a math-styled font."
+  [& children]
+  (into [:span {:class "math-block"}] children))
+
+(defn- recurrence-block
+  "A styled block for displaying a recurrence relation."
+  [content & {:keys [highlight?] :or {highlight? true}}]
+  [:div {:class (str "font-mono text-sm p-3 rounded mb-2 "
+                     (if highlight?
+                       "bg-gray-100 border border-gray-200"
+                       "bg-gray-50 border border-gray-100 opacity-50"))}
+   content])
+
+(defn- algorithm-details-linear [app-state]
+  (let [global? (= :global (:alignment-type @app-state))]
+    [:div
+     [:p {:class "mb-3 text-sm text-gray-700 leading-relaxed"}
+      (if global?
+        "The Needleman-Wunsch algorithm fills the entire matrix to find the best global alignment. Each cell F(i,j) represents the optimal score for aligning the first i residues of one sequence with the first j residues of the other."
+        "The Smith-Waterman algorithm modifies the global recurrence by adding zero as an option \u2014 allowing alignments to start anywhere. Traceback begins at the highest-scoring cell(s) and stops when a zero is reached.")]
+     [collapsible "Recurrence relation" false
+      (if global?
+        [:div
+         [:p {:class "mb-2 text-sm text-gray-600"} "Initialization:"]
+         [recurrence-block
+          [:div
+           [:div "F(i, 0) = \u2212i \u00d7 d"]
+           [:div "F(0, j) = \u2212j \u00d7 d"]]]
+         [:p {:class "mb-2 text-sm text-gray-600"} "Recurrence:"]
+         [recurrence-block
+          [:div
+           [:div "F(i, j) = max {"]
+           [:div {:class "pl-8"} "F(i\u22121, j\u22121) + s(x" [:sub "i"] ", y" [:sub "j"] "),"]
+           [:div {:class "pl-8"} "F(i\u22121, j) \u2212 d,"]
+           [:div {:class "pl-8"} "F(i, j\u22121) \u2212 d"]
+           [:div "}"]]]]
+        [:div
+         [:p {:class "mb-2 text-sm text-gray-600"} "Initialization:"]
+         [recurrence-block
+          [:div
+           [:div "F(i, 0) = 0"]
+           [:div "F(0, j) = 0"]]]
+         [:p {:class "mb-2 text-sm text-gray-600"} "Recurrence:"]
+         [recurrence-block
+          [:div
+           [:div "F(i, j) = max {"]
+           [:div {:class "pl-8"} "0,"]
+           [:div {:class "pl-8"} "F(i\u22121, j\u22121) + s(x" [:sub "i"] ", y" [:sub "j"] "),"]
+           [:div {:class "pl-8"} "F(i\u22121, j) \u2212 d,"]
+           [:div {:class "pl-8"} "F(i, j\u22121) \u2212 d"]
+           [:div "}"]]]])]]))
+
+(defn- algorithm-details-affine [_app-state]
+  ;; Placeholder — implemented in Task 6
+  nil)
+
+(defn algorithm-details [app-state]
+  (case (:gap-model @app-state)
+    :linear  [algorithm-details-linear app-state]
+    :affine  [algorithm-details-affine app-state]
+    nil))
+
+;; ---------------------------------------------------------------------------
 ;; Page layout
 ;; ---------------------------------------------------------------------------
 
@@ -503,7 +570,11 @@
                 "Paths for optimal alignments are indicated in red"])
              (when (= :affine (:gap-model @app-state))
                [state-toggle app-state])
-             [:div (svg-component @app-state)]])]]]
+             [:div (svg-component @app-state)]])]]
+
+        ;; Algorithm details (below the tool)
+        [:div {:class "mt-8"}
+         [algorithm-details app-state]]]
 
        ;; Footer
        [:footer {:class "mt-12 py-6 border-t border-gray-200 text-center text-sm text-gray-500"}
