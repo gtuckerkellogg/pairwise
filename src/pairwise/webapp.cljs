@@ -420,23 +420,25 @@
 ;; ---------------------------------------------------------------------------
 
 (defn introduction-section []
-  [collapsible "About this tool" true
-   [:div
-    [:p {:class "mb-3"}
-     "Pairwise alignment compares two biological sequences to identify regions of similarity. "
-     "Using dynamic programming, we fill a scoring matrix where each cell represents the best "
-     "alignment score up to that point. The optimal alignment(s) are found by tracing back "
-     "through the matrix \u2014 when multiple paths achieve the same score, all optimal alignments "
-     "are reported."]
-    [:p {:class "mb-3"}
-     "Two classical algorithms solve this problem: "
-     [:strong "Needleman-Wunsch"] " (1970) for global alignment (comparing sequences end-to-end) and "
-     [:strong "Smith-Waterman"] " (1981) for local alignment (finding the highest-scoring subsequence pair). "
-     "Both can use either a simple " [:strong "linear gap penalty"] " or the more realistic "
-     [:strong "affine gap model"] " (Gotoh, 1982), which distinguishes between opening and extending a gap."]
-    [:p {:class "mb-3 italic text-gray-500"}
-     "The default sequences (HEAGAWGHEE / PAWHEAE) and BLOSUM50 matrix reproduce the example "
-     "from Durbin et al. (1998), Ch. 2."]
+  [:div {:class "flex flex-col md:flex-row gap-4 mb-6"}
+   [:div {:class "md:w-1/2"}
+    [collapsible "About this tool" false
+     [:p {:class "mb-3"}
+      "Pairwise alignment compares two biological sequences to identify regions of similarity. "
+      "Using dynamic programming, we fill a scoring matrix where each cell represents the best "
+      "alignment score up to that point. The optimal alignment(s) are found by tracing back "
+      "through the matrix \u2014 when multiple paths achieve the same score, all optimal alignments "
+      "are reported."]
+     [:p {:class "mb-3"}
+      "Two classical algorithms solve this problem: "
+      [:strong "Needleman-Wunsch"] " (1970) for global alignment (comparing sequences end-to-end) and "
+      [:strong "Smith-Waterman"] " (1981) for local alignment (finding the highest-scoring subsequence pair). "
+      "Both can use either a simple " [:strong "linear gap penalty"] " or the more realistic "
+      [:strong "affine gap model"] " (Gotoh, 1982), which distinguishes between opening and extending a gap."]
+     [:p {:class "italic text-gray-500"}
+      "The default sequences (HEAGAWGHEE / PAWHEAE) and BLOSUM50 matrix reproduce the example "
+      "from Durbin et al. (1998), Ch. 2."]]]
+   [:div {:class "md:w-1/2"}
     [collapsible "Why align sequences?" false
      [:p {:class "mb-3"}
       "Sequence similarity often implies shared evolutionary origin (homology). "
@@ -452,19 +454,35 @@
 ;; Algorithm details (reactive to tool state)
 ;; ---------------------------------------------------------------------------
 
-(defn- math-span
-  "Render text in a math-styled font."
-  [& children]
-  (into [:span {:class "math-block"}] children))
+(defn- katex-math
+  "Render a LaTeX string using KaTeX. display? true for block math, false for inline."
+  [latex & {:keys [display?] :or {display? true}}]
+  (let [ref (reagent/atom nil)]
+    (reagent/create-class
+     {:display-name "katex-math"
+      :component-did-mount
+      (fn [_]
+        (when-let [el @ref]
+          (when (exists? js/katex)
+            (js/katex.render latex el #js {:displayMode display? :throwOnError false}))))
+      :component-did-update
+      (fn [this]
+        (let [[_ new-latex] (reagent/argv this)]
+          (when-let [el @ref]
+            (when (exists? js/katex)
+              (js/katex.render new-latex el #js {:displayMode display? :throwOnError false})))))
+      :reagent-render
+      (fn [_latex & _opts]
+        [:span {:ref #(reset! ref %)}])})))
 
 (defn- recurrence-block
-  "A styled block for displaying a recurrence relation."
-  [content & {:keys [highlight?] :or {highlight? true}}]
-  [:div {:class (str "font-mono text-sm p-3 rounded mb-2 "
+  "A styled block for displaying a KaTeX recurrence."
+  [latex & {:keys [highlight?] :or {highlight? true}}]
+  [:div {:class (str "p-3 rounded mb-3 "
                      (if highlight?
                        "bg-gray-100 border border-gray-200"
-                       "bg-gray-50 border border-gray-100 opacity-50"))}
-   content])
+                       "bg-gray-50 border border-gray-100 opacity-40"))}
+   [katex-math latex]])
 
 (defn- algorithm-details-linear [app-state]
   (let [global? (= :global (:alignment-type @app-state))]
@@ -473,37 +491,17 @@
       (if global?
         "The Needleman-Wunsch algorithm fills the entire matrix to find the best global alignment. Each cell F(i,j) represents the optimal score for aligning the first i residues of one sequence with the first j residues of the other."
         "The Smith-Waterman algorithm modifies the global recurrence by adding zero as an option \u2014 allowing alignments to start anywhere. Traceback begins at the highest-scoring cell(s) and stops when a zero is reached.")]
-     [collapsible "Recurrence relation" false
-      (if global?
-        [:div
-         [:p {:class "mb-2 text-sm text-gray-600"} "Initialization:"]
-         [recurrence-block
-          [:div
-           [:div "F(i, 0) = \u2212i \u00d7 d"]
-           [:div "F(0, j) = \u2212j \u00d7 d"]]]
-         [:p {:class "mb-2 text-sm text-gray-600"} "Recurrence:"]
-         [recurrence-block
-          [:div
-           [:div "F(i, j) = max {"]
-           [:div {:class "pl-8"} "F(i\u22121, j\u22121) + s(x" [:sub "i"] ", y" [:sub "j"] "),"]
-           [:div {:class "pl-8"} "F(i\u22121, j) \u2212 d,"]
-           [:div {:class "pl-8"} "F(i, j\u22121) \u2212 d"]
-           [:div "}"]]]]
-        [:div
-         [:p {:class "mb-2 text-sm text-gray-600"} "Initialization:"]
-         [recurrence-block
-          [:div
-           [:div "F(i, 0) = 0"]
-           [:div "F(0, j) = 0"]]]
-         [:p {:class "mb-2 text-sm text-gray-600"} "Recurrence:"]
-         [recurrence-block
-          [:div
-           [:div "F(i, j) = max {"]
-           [:div {:class "pl-8"} "0,"]
-           [:div {:class "pl-8"} "F(i\u22121, j\u22121) + s(x" [:sub "i"] ", y" [:sub "j"] "),"]
-           [:div {:class "pl-8"} "F(i\u22121, j) \u2212 d,"]
-           [:div {:class "pl-8"} "F(i, j\u22121) \u2212 d"]
-           [:div "}"]]]])]]))
+     [:div {:class "mt-3"}
+      [:p {:class "mb-2 text-sm font-semibold text-gray-600"} "Initialization:"]
+      [recurrence-block
+       (if global?
+         "F(i, 0) = -i \\times d \\qquad F(0, j) = -j \\times d"
+         "F(i, 0) = 0 \\qquad F(0, j) = 0")]
+      [:p {:class "mb-2 text-sm font-semibold text-gray-600"} "Recurrence:"]
+      [recurrence-block
+       (if global?
+         "F(i,j) = \\max \\begin{cases} F(i-1, j-1) + s(x_i, y_j) \\\\ F(i-1, j) - d \\\\ F(i, j-1) - d \\end{cases}"
+         "F(i,j) = \\max \\begin{cases} 0 \\\\ F(i-1, j-1) + s(x_i, y_j) \\\\ F(i-1, j) - d \\\\ F(i, j-1) - d \\end{cases}")]]]))
 
 (defn- affine-recurrence-vm
   "V'M recurrence block."
@@ -514,21 +512,12 @@
     " \u2014 match/mismatch state"]
    (when highlight?
      [:p {:class "text-sm text-gray-600 mb-2"}
-      "V\u2032M(i,j) represents the best alignment score ending with residues x"
-      [:sub "i"] " and y" [:sub "j"]
-      " aligned (matched or mismatched). It can transition from any of the three states."])
+      "Best alignment score ending with residues x" [:sub "i"] " and y" [:sub "j"]
+      " aligned. Can transition from any of the three states."])
    [recurrence-block
-    [:div
-     (when (not global?)
-       [:div {:class "mb-1"} "V\u2032M(i, j) = max {"])
-     (when global?
-       [:div "V\u2032M(i, j) = max {"])
-     (when (not global?)
-       [:div {:class "pl-8"} "0,"])
-     [:div {:class "pl-8"} "V\u2032M(i\u22121, j\u22121),"]
-     [:div {:class "pl-8"} "V\u2032X(i\u22121, j\u22121),"]
-     [:div {:class "pl-8"} "V\u2032Y(i\u22121, j\u22121)"]
-     [:div "} + s(x" [:sub "i"] ", y" [:sub "j"] ")"]]
+    (if global?
+      "V'_M(i,j) = \\max \\begin{cases} V'_M(i-1, j-1) \\\\ V'_X(i-1, j-1) \\\\ V'_Y(i-1, j-1) \\end{cases} + s(x_i, y_j)"
+      "V'_M(i,j) = \\max \\begin{cases} 0 \\\\ V'_M(i-1, j-1) \\\\ V'_X(i-1, j-1) \\\\ V'_Y(i-1, j-1) \\end{cases} + s(x_i, y_j)")
     :highlight? highlight?]])
 
 (defn- affine-recurrence-vx
@@ -540,14 +529,10 @@
     " \u2014 gap in top sequence"]
    (when highlight?
      [:p {:class "text-sm text-gray-600 mb-2"}
-      "V\u2032X(i,j) represents the best score ending with a gap in the top sequence (deletion). "
-      "Opening a new gap from state M costs d; extending an existing gap costs e."])
+      "Best score ending with a gap in the top sequence (deletion). "
+      "Opening from M costs d; extending costs e."])
    [recurrence-block
-    [:div
-     [:div "V\u2032X(i, j) = max {"]
-     [:div {:class "pl-8"} "V\u2032M(i\u22121, j) \u2212 d,"]
-     [:div {:class "pl-8"} "V\u2032X(i\u22121, j) \u2212 e"]
-     [:div "}"]]
+    "V'_X(i,j) = \\max \\begin{cases} V'_M(i-1, j) - d \\\\ V'_X(i-1, j) - e \\end{cases}"
     :highlight? highlight?]])
 
 (defn- affine-recurrence-vy
@@ -559,14 +544,10 @@
     " \u2014 gap in bottom sequence"]
    (when highlight?
      [:p {:class "text-sm text-gray-600 mb-2"}
-      "V\u2032Y(i,j) represents the best score ending with a gap in the bottom sequence (insertion). "
-      "Opening a new gap from state M costs d; extending an existing gap costs e."])
+      "Best score ending with a gap in the bottom sequence (insertion). "
+      "Opening from M costs d; extending costs e."])
    [recurrence-block
-    [:div
-     [:div "V\u2032Y(i, j) = max {"]
-     [:div {:class "pl-8"} "V\u2032M(i, j\u22121) \u2212 d,"]
-     [:div {:class "pl-8"} "V\u2032Y(i, j\u22121) \u2212 e"]
-     [:div "}"]]
+    "V'_Y(i,j) = \\max \\begin{cases} V'_M(i, j-1) - d \\\\ V'_Y(i, j-1) - e \\end{cases}"
     :highlight? highlight?]])
 
 (defn- algorithm-details-affine [app-state]
@@ -590,7 +571,7 @@
 
      ;; Recurrences — all three shown, with highlighting based on active state
      (when (not= active :optimal)
-       [collapsible "Recurrence relations" (not= active :all)
+       [:div {:class "mt-3"}
         [affine-recurrence-vm global? (highlight? :M)]
         [affine-recurrence-vx global? (highlight? :X)]
         [affine-recurrence-vy global? (highlight? :Y)]])]))
@@ -645,14 +626,14 @@
     (fn []
       [:div {:class "flex flex-col min-h-screen"}
        ;; Header
-       [:header {:class "bg-nus-navy text-white py-8"}
-        [:div {:class "max-w-6xl mx-auto px-4 text-center"}
-         [:h1 {:class "text-3xl font-bold"} "Pairwise Sequence Alignment"]
-         [:p {:class "mt-2 text-lg text-blue-200"}
-          "Interactive visualization of dynamic programming alignment algorithms"]]]
+       [:header {:class "bg-nus-navy text-white py-4"}
+        [:div {:class "max-w-6xl mx-auto px-4 flex items-baseline justify-between"}
+         [:h1 {:class "text-2xl font-bold"} "Pairwise Sequence Alignment"]
+         [:p {:class "text-sm text-blue-200"}
+          "Interactive visualization of DP alignment algorithms"]]]
 
        ;; Main content
-       [:main {:class "max-w-6xl mx-auto px-4 py-8 flex-1 w-full"}
+       [:main {:class "max-w-6xl mx-auto px-4 py-4 flex-1 w-full"}
         [introduction-section]
         ;; Tool: controls + visualization
         [:div {:class "flex flex-col md:flex-row gap-6"}
