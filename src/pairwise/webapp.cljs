@@ -433,12 +433,18 @@
       "alignment score up to that point. The optimal alignment(s) are found by tracing back "
       "through the matrix \u2014 when multiple paths achieve the same score, all optimal alignments "
       "are reported."]
+      [:p {:class "mb-3"}
+      "Students learning about parwise sequence alignment often study visualisations of the dynamic programming "
+      "problem, but these visualisations are usually static and restricted to a single problem. "
+      "This tool provides interactive visualisations of landmark dynamic programming algorithms "
+      "for pairwise alignment, allowing students and instructors to change scoring systems and sequences."
+      ]
      [:p {:class "mb-3"}
       "Two classical algorithms solve this problem: "
       [:strong "Needleman-Wunsch"] " (1970) for global alignment (comparing sequences end-to-end) and "
       [:strong "Smith-Waterman"] " (1981) for local alignment (finding the highest-scoring subsequence pair). "
       "Both can use either a simple " [:strong "linear gap penalty"] " or the more realistic "
-      [:strong "affine gap model"] " (Gotoh, 1982), which distinguishes between opening and extending a gap."]
+      [:strong "affine gap model"] " (Gotoh, 1982, corrected by Altschul and Erikson 1986), which distinguishes between opening and extending a gap."]
      [:p {:class "italic text-gray-500"}
       "The default sequences (HEAGAWGHEE / PAWHEAE) and BLOSUM50 matrix reproduce the example "
       "from Durbin et al. (1998), Ch. 2."]]]
@@ -599,7 +605,8 @@
 ;; ---------------------------------------------------------------------------
 
 (defn references-section []
-  [collapsible "References" false
+  [:div {:class "mb-6"}
+   [:h2 {:class "text-lg font-semibold text-nus-navy mb-3"} "References"]
    [:ol {:class "list-decimal list-inside space-y-2 text-sm text-gray-700"}
     [:li "Needleman, S.B. & Wunsch, C.D. (1970). A general method applicable to the search for similarities in the amino acid sequence of two proteins. "
      [:em "J. Mol. Biol."] " 48(3), 443\u2013453."]
