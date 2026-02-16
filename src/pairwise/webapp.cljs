@@ -339,6 +339,21 @@
    [:strong (:score result)]])
 
 
+(defn color-legend []
+  [:div {:style {:margin-bottom "10px" :font-size "14px"}}
+   "State-aware arrows: "
+   (for [[state label] [[:M "V'M"] [:X "V'X"] [:Y "V'Y"]]]
+     ^{:key state}
+     [:span {:style {:margin-right "15px"}}
+      [:span {:style {:display "inline-block"
+                      :width "12px"
+                      :height "12px"
+                      :background-color (state-color state)
+                      :border "1px solid #666"
+                      :margin-right "4px"
+                      :vertical-align "middle"}}]
+      label])])
+
 (defn state-toggle [app-state]
   (let [active (or (:active-state @app-state) :all)]
     [:div.btn-group {:style {:margin-bottom "10px"}}
@@ -390,7 +405,7 @@
             [:div {:class "text-center" :margin-left "5%"}
              [:div.panel-heading [:h3 "Dynamic programming matrix visualisation"]
               (if (= :affine (:gap-model @app-state))
-                "State-aware arrows: blue=V'M, green=V'X, orange=V'Y"
+                [color-legend]
                 "Paths for optimal alignments are indicated in red")]
              (when (= :affine (:gap-model @app-state))
                [state-toggle app-state])
