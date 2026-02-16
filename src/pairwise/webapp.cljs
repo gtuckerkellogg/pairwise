@@ -213,6 +213,19 @@
 ;; Form components
 ;; ---------------------------------------------------------------------------
 
+(defn help-toggle
+  "A (?) icon that toggles inline help text."
+  [_text]
+  (let [show? (reagent/atom false)]
+    (fn [text]
+      [:span
+       [:button {:class "ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-nus-navy text-white text-xs hover:bg-nus-orange transition-colors cursor-pointer"
+                 :on-click #(do (.stopPropagation %) (swap! show? not))}
+        "?"]
+       (when @show?
+         [:div {:class "mt-2 mb-2 p-3 bg-blue-50 rounded text-sm text-gray-700 leading-relaxed font-normal"}
+          text])])))
+
 (defn- toggle-btn
   "A toggle button for use in button groups."
   [label active? on-click]
@@ -258,7 +271,10 @@
 
      ;; --- Alignment type ---
      [:div {:class "rounded-lg border border-nus-navy overflow-hidden mb-4"}
-      [:div {:class "bg-nus-navy text-white px-4 py-2 text-sm font-semibold"} "Alignment type"]
+      [:div {:class "bg-nus-navy text-white px-4 py-2 text-sm font-semibold"}
+       "Alignment type"
+       [help-toggle
+        "Global alignment (Needleman-Wunsch) finds the best end-to-end alignment(s) of both complete sequences. Local alignment (Smith-Waterman) finds the highest-scoring subsequence pair(s) \u2014 useful when only part of the sequences are related. When multiple paths through the matrix achieve the same optimal score, all optimal alignments are reported."]]
       [:div {:class "px-4 py-3"}
        [:div {:class "inline-flex rounded-md shadow-sm overflow-hidden"}
         (toggle-btn "Needleman-Wunsch" (= :global (:alignment-type state))
@@ -273,7 +289,12 @@
 
        ;; Scoring matrix type
        [:div {:class "flex items-start gap-4 mb-3"}
-        [:div {:class "w-1/3 text-sm font-medium text-gray-700 pt-1"} [:label "Scoring Matrix"]]
+        [:div {:class "w-1/3 text-sm font-medium text-gray-700 pt-1"}
+         [:label "Scoring Matrix"]
+         [help-toggle
+          (if (= :standard (:scoring-matrix-type state))
+            "Substitution matrices like BLOSUM and PAM encode the evolutionary likelihood of one amino acid replacing another. Higher BLOSUM numbers (e.g., 62 vs 50) are tuned for more closely related sequences."
+            "A simple match/mismatch scheme: identical residues score the match value, different residues score the mismatch value (typically negative).")]]
         [:div {:class "w-2/3"}
          [:label {:class "flex items-center gap-2 text-sm mb-1 cursor-pointer"}
           [:input {:type "radio"
@@ -315,7 +336,10 @@
 
        ;; Gap model
        [:div {:class "flex items-center gap-4 mb-3"}
-        [:div {:class "w-1/3 text-sm font-medium text-gray-700"} [:label "Gap Model"]]
+        [:div {:class "w-1/3 text-sm font-medium text-gray-700"}
+         [:label "Gap Model"]
+         [help-toggle
+          "Linear: each gap position costs the same penalty d. A gap of length k costs k\u00d7d. Affine: opening a new gap costs d, extending it costs e per position. A gap of length k costs d + (k\u22121)\u00d7e. This reflects the biological observation that insertions and deletions tend to occur in contiguous blocks."]]
         [:div {:class "w-2/3"}
          [:div {:class "inline-flex rounded-md shadow-sm overflow-hidden"}
           (toggle-btn "Linear" (= :linear (:gap-model state))
@@ -326,6 +350,8 @@
        ;; Gap parameters
        (if (= :affine (:gap-model state))
          [:div
+          [:div {:class "mb-1"}
+           [help-toggle "Larger d (gap open) relative to e (gap extend) discourages opening new gaps but tolerates longer ones. Try adjusting these to see how the optimal path changes."]]
           (row [:label "Gap open (d): " (:gap-open state)]
                [:input {:class "w-full" :type "range" :min 1 :max 20
                         :value (:gap-open state)
