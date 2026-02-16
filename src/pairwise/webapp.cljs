@@ -214,16 +214,18 @@
 ;; ---------------------------------------------------------------------------
 
 (defn help-toggle
-  "A (?) icon that toggles inline help text."
+  "A (?) icon that toggles inline help text. Uses a shared atom so only one
+   help popup is open at a time. The expanded text renders below the label row."
   [_text]
   (let [show? (reagent/atom false)]
     (fn [text]
-      [:span
-       [:button {:class "ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-nus-navy text-white text-xs hover:bg-nus-orange transition-colors cursor-pointer"
+      [:span {:class "relative"}
+       [:button {:class "ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-nus-navy text-white text-xs hover:bg-nus-orange transition-colors cursor-pointer align-middle"
                  :on-click #(do (.stopPropagation %) (swap! show? not))}
         "?"]
        (when @show?
-         [:div {:class "mt-2 mb-2 p-3 bg-blue-50 rounded text-sm text-gray-700 leading-relaxed font-normal"}
+         [:div {:class "absolute left-0 top-7 z-10 p-3 bg-blue-50 border border-blue-200 rounded shadow-md text-sm text-gray-700 leading-relaxed font-normal"
+                :style {:min-width "280px" :max-width "400px"}}
           text])])))
 
 (defn- toggle-btn
@@ -288,28 +290,29 @@
       [:div {:class "px-4 py-3"}
 
        ;; Scoring matrix type
-       [:div {:class "flex items-start gap-4 mb-3"}
-        [:div {:class "w-1/3 text-sm font-medium text-gray-700 pt-1"}
-         [:label "Scoring Matrix"]
-         [help-toggle
-          (if (= :standard (:scoring-matrix-type state))
-            "Substitution matrices like BLOSUM and PAM encode the evolutionary likelihood of one amino acid replacing another. Higher BLOSUM numbers (e.g., 62 vs 50) are tuned for more closely related sequences."
-            "A simple match/mismatch scheme: identical residues score the match value, different residues score the mismatch value (typically negative).")]]
-        [:div {:class "w-2/3"}
-         [:label {:class "flex items-center gap-2 text-sm mb-1 cursor-pointer"}
-          [:input {:type "radio"
-                   :name "scoring-matrix-type"
-                   :value "simple"
-                   :checked (= :simple (:scoring-matrix-type state))
-                   :on-change #(update-state! app-state :scoring-matrix-type :simple)}]
-          "User-defined"]
-         [:label {:class "flex items-center gap-2 text-sm cursor-pointer"}
-          [:input {:type "radio"
-                   :name "scoring-matrix-type"
-                   :value "standard"
-                   :checked (= :standard (:scoring-matrix-type state))
-                   :on-change #(update-state! app-state :scoring-matrix-type :standard)}]
-          "Standard"]]]
+       [:div {:class "mb-3"}
+        [:div {:class "flex items-start gap-4"}
+         [:div {:class "w-1/3 text-sm font-medium text-gray-700 pt-1"}
+          [:label "Scoring Matrix"]
+          [help-toggle
+           (if (= :standard (:scoring-matrix-type state))
+             "Substitution matrices like BLOSUM and PAM encode the evolutionary likelihood of one amino acid replacing another. Higher BLOSUM numbers (e.g., 62 vs 50) are tuned for more closely related sequences."
+             "A simple match/mismatch scheme: identical residues score the match value, different residues score the mismatch value (typically negative).")]]
+         [:div {:class "w-2/3"}
+          [:label {:class "flex items-center gap-2 text-sm mb-1 cursor-pointer"}
+           [:input {:type "radio"
+                    :name "scoring-matrix-type"
+                    :value "simple"
+                    :checked (= :simple (:scoring-matrix-type state))
+                    :on-change #(update-state! app-state :scoring-matrix-type :simple)}]
+           "User-defined"]
+          [:label {:class "flex items-center gap-2 text-sm cursor-pointer"}
+           [:input {:type "radio"
+                    :name "scoring-matrix-type"
+                    :value "standard"
+                    :checked (= :standard (:scoring-matrix-type state))
+                    :on-change #(update-state! app-state :scoring-matrix-type :standard)}]
+           "Standard"]]]]
 
        ;; Simple matrix sliders
        (when (= :simple (:scoring-matrix-type state))
@@ -335,11 +338,12 @@
            (map (fn [[k v]] [:option {:key k :value k} (:name v)]) scoring-matrices)]])
 
        ;; Gap model
-       [:div {:class "flex items-center gap-4 mb-3"}
-        [:div {:class "w-1/3 text-sm font-medium text-gray-700"}
-         [:label "Gap Model"]
-         [help-toggle
-          "Linear: each gap position costs the same penalty d. A gap of length k costs k\u00d7d. Affine: opening a new gap costs d, extending it costs e per position. A gap of length k costs d + (k\u22121)\u00d7e. This reflects the biological observation that insertions and deletions tend to occur in contiguous blocks."]]
+       [:div {:class "mb-3"}
+        [:div {:class "flex items-center gap-4"}
+         [:div {:class "w-1/3 text-sm font-medium text-gray-700"}
+          [:label "Gap Model"]
+          [help-toggle
+           "Linear: each gap position costs the same penalty d. A gap of length k costs k\u00d7d. Affine: opening a new gap costs d, extending it costs e per position. A gap of length k costs d + (k\u22121)\u00d7e. This reflects the biological observation that insertions and deletions tend to occur in contiguous blocks."]]
         [:div {:class "w-2/3"}
          [:div {:class "inline-flex rounded-md shadow-sm overflow-hidden"}
           (toggle-btn "Linear" (= :linear (:gap-model state))
