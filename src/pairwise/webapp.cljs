@@ -505,9 +505,95 @@
            [:div {:class "pl-8"} "F(i, j\u22121) \u2212 d"]
            [:div "}"]]]])]]))
 
-(defn- algorithm-details-affine [_app-state]
-  ;; Placeholder — implemented in Task 6
-  nil)
+(defn- affine-recurrence-vm
+  "V'M recurrence block."
+  [global? highlight?]
+  [:div {:class "mb-4"}
+   [:h4 {:class (str "text-sm font-semibold mb-1 " (if highlight? "text-gray-800" "text-gray-400"))}
+    [:span {:style {:color (when highlight? "#56B4E9")}} "V\u2032M"]
+    " \u2014 match/mismatch state"]
+   (when highlight?
+     [:p {:class "text-sm text-gray-600 mb-2"}
+      "V\u2032M(i,j) represents the best alignment score ending with residues x"
+      [:sub "i"] " and y" [:sub "j"]
+      " aligned (matched or mismatched). It can transition from any of the three states."])
+   [recurrence-block
+    [:div
+     (when (not global?)
+       [:div {:class "mb-1"} "V\u2032M(i, j) = max {"])
+     (when global?
+       [:div "V\u2032M(i, j) = max {"])
+     (when (not global?)
+       [:div {:class "pl-8"} "0,"])
+     [:div {:class "pl-8"} "V\u2032M(i\u22121, j\u22121),"]
+     [:div {:class "pl-8"} "V\u2032X(i\u22121, j\u22121),"]
+     [:div {:class "pl-8"} "V\u2032Y(i\u22121, j\u22121)"]
+     [:div "} + s(x" [:sub "i"] ", y" [:sub "j"] ")"]]
+    :highlight? highlight?]])
+
+(defn- affine-recurrence-vx
+  "V'X recurrence block."
+  [global? highlight?]
+  [:div {:class "mb-4"}
+   [:h4 {:class (str "text-sm font-semibold mb-1 " (if highlight? "text-gray-800" "text-gray-400"))}
+    [:span {:style {:color (when highlight? "#E69F00")}} "V\u2032X"]
+    " \u2014 gap in top sequence"]
+   (when highlight?
+     [:p {:class "text-sm text-gray-600 mb-2"}
+      "V\u2032X(i,j) represents the best score ending with a gap in the top sequence (deletion). "
+      "Opening a new gap from state M costs d; extending an existing gap costs e."])
+   [recurrence-block
+    [:div
+     [:div "V\u2032X(i, j) = max {"]
+     [:div {:class "pl-8"} "V\u2032M(i\u22121, j) \u2212 d,"]
+     [:div {:class "pl-8"} "V\u2032X(i\u22121, j) \u2212 e"]
+     [:div "}"]]
+    :highlight? highlight?]])
+
+(defn- affine-recurrence-vy
+  "V'Y recurrence block."
+  [global? highlight?]
+  [:div {:class "mb-4"}
+   [:h4 {:class (str "text-sm font-semibold mb-1 " (if highlight? "text-gray-800" "text-gray-400"))}
+    [:span {:style {:color (when highlight? "#009E73")}} "V\u2032Y"]
+    " \u2014 gap in bottom sequence"]
+   (when highlight?
+     [:p {:class "text-sm text-gray-600 mb-2"}
+      "V\u2032Y(i,j) represents the best score ending with a gap in the bottom sequence (insertion). "
+      "Opening a new gap from state M costs d; extending an existing gap costs e."])
+   [recurrence-block
+    [:div
+     [:div "V\u2032Y(i, j) = max {"]
+     [:div {:class "pl-8"} "V\u2032M(i, j\u22121) \u2212 d,"]
+     [:div {:class "pl-8"} "V\u2032Y(i, j\u22121) \u2212 e"]
+     [:div "}"]]
+    :highlight? highlight?]])
+
+(defn- algorithm-details-affine [app-state]
+  (let [active (or (:active-state @app-state) :all)
+        global? (= :global (:alignment-type @app-state))
+        highlight? (fn [state]
+                     (or (= active :all) (= active state)))]
+    [:div
+     ;; Conceptual summary
+     [:p {:class "mb-3 text-sm text-gray-700 leading-relaxed"}
+      (case active
+        :optimal
+        "The optimal alignment is found by tracing back through the state-expanded graph, where each cell has three nodes (one per state). The path can transition between states, reflecting gap openings and closings. All paths achieving the optimal score are shown."
+        ;; default for :all and individual states
+        (str "The affine gap model uses three matrices that track the best score arriving via different states: "
+             "V\u2032M (last columns matched), V\u2032X (gap in top sequence), V\u2032Y (gap in bottom sequence). "
+             (when (not global?)
+               "For local alignment, each state also includes 0 as an option, allowing alignments to begin anywhere. ")
+             "The gap opening penalty d is applied when transitioning from M to a gap state, "
+             "while the extension penalty e is applied when continuing in a gap state."))]
+
+     ;; Recurrences — all three shown, with highlighting based on active state
+     (when (not= active :optimal)
+       [collapsible "Recurrence relations" (not= active :all)
+        [affine-recurrence-vm global? (highlight? :M)]
+        [affine-recurrence-vx global? (highlight? :X)]
+        [affine-recurrence-vy global? (highlight? :Y)]])]))
 
 (defn algorithm-details [app-state]
   (case (:gap-model @app-state)
