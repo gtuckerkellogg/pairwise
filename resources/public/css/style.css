@@ -1,17 +1,3 @@
-.panel-primary {
-  border-color: #003D7C; }
-  .panel-primary > .panel-heading {
-    background-image: none;
-    background-color: #003D7C;
-    border-color: #003D7C; }
-  .panel-primary > .panel-body {
-    border-color: #EF7C00; }
-
-.panel-info {
-  border-color: #EF7C00; }
-  .panel-info > .panel-heading {
-    background-image: none;
-    background-color: #ffae56;
-    color: #003D7C; }
-
-/*# sourceMappingURL=style.css.map */
+/* Custom styles that complement Tailwind */
+/* Math formatting for recurrences */
+.math-block { font-family: 'Cambria Math', 'Latin Modern Math', serif; }
