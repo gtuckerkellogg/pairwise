@@ -349,7 +349,7 @@
           (toggle-btn "Linear" (= :linear (:gap-model state))
                       #(update-state! app-state :gap-model :linear))
           (toggle-btn "Affine" (= :affine (:gap-model state))
-                      #(update-state! app-state :gap-model :affine))]]]
+                      #(update-state! app-state :gap-model :affine))]]]]
 
        ;; Gap parameters
        (if (= :affine (:gap-model state))
