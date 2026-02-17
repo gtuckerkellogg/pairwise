@@ -213,7 +213,7 @@
     [:svg {:width   "100%"
            :viewBox (print-str (- cs) (- cs) (str (* (inc cols) cs)) (str (* (inc rows) cs)))
            :id    "canvas"
-           :style {:background-color "#fff" :max-width "600px"}}
+           :style {:background-color "#fff"}}
      [:rect {:x 0 :y 0 :width (* cs cols) :height (* cs rows) :fill "none" :stroke "black" :stroke-width 1}]
      (if affine?
        (list
@@ -726,7 +726,7 @@
                [state-toggle app-state])
              [:div (svg-component @app-state)]
              ;; Alignment results below the matrix
-             [:div {:class "mt-4 text-left"}
+             [:div {:class "mt-4"}
               [:div {:class "rounded-lg border border-nus-orange overflow-hidden"}
                [:div {:class "bg-nus-orange-light text-nus-navy px-4 py-2 text-center font-semibold text-sm"}
                 (summarize-alignment @app-state)]
