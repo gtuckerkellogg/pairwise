@@ -4,7 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Clojure/ClojureScript library for pairwise sequence comparison using dynamic programming algorithms (Needleman-Wunsch and Smith-Waterman) with linear and affine gap penalties (Gotoh algorithm). The project includes both a command-line interface and an interactive web application.
+This is a Clojure/ClojureScript library for pairwise sequence comparison using dynamic programming algorithms (Needleman-Wunsch and Smith-Waterman) with linear and affine gap penalties (Gotoh algorithm). The project includes both a command-line interface and an interactive pedagogical web application. Licensed under CC-BY 4.0.
+
+## Style Guide
+- Use British English throughout (visualisation, initialisation, colour, etc.)
+- NUS colour palette: navy `#003D7C`, slate `#2C6F94`, orange `#EF7C00`, orange-light `#ffae56`
 
 ## Development Commands
 
@@ -37,10 +41,10 @@ This is a Clojure/ClojureScript library for pairwise sequence comparison using d
 - **pairwise.alignment**: Multimethod definitions and shared traceback/path logic, dispatching on `:gap-model` (`:linear` or `:affine`)
 - **pairwise.linear**: Linear gap penalty implementations (Needleman-Wunsch/Smith-Waterman)
 - **pairwise.affine**: Affine gap penalty implementations (Gotoh algorithm with three-state DP: V'M, V'X, V'Y)
-- **pairwise.viz-model**: Shared visualization IR — transforms alignment results into renderer-agnostic drawing instructions (`.cljc`, used by both TikZ and webapp)
+- **pairwise.viz-model**: Shared visualisation IR — transforms alignment results into renderer-agnostic drawing instructions (`.cljc`, used by both TikZ and webapp)
 - **pairwise.substitution**: Scoring matrix utilities and sequence validation
 - **pairwise.tikz-view**: TikZ/LaTeX renderer — consumes IR instructions to produce Beamer-compatible LaTeX output
-- **pairwise.webapp**: Reagent-based web interface — consumes IR instructions for SVG visualization (linear and affine gaps)
+- **pairwise.webapp**: Reagent-based pedagogical web interface — consumes IR instructions for SVG visualisation (linear and affine gaps)
 - **pairwise.main**: Command-line interface (supports both linear and affine)
 
 ### Key Components
@@ -51,26 +55,38 @@ This is a Clojure/ClojureScript library for pairwise sequence comparison using d
 
 ### Web Application
 - Built with Reagent (React wrapper for ClojureScript)
-- Interactive forms using reagent-forms
-- SVG visualization of dynamic programming matrices with optimal paths
+- Styled with Tailwind CSS via CDN (custom NUS colour theme defined in `index.html`)
+- KaTeX via CDN for LaTeX math rendering of recurrences
+- SVG visualisation of dynamic programming matrices with colour-coded arrows
+- Colour scheme: blue (`#56B4E9`) for match/diagonal, red (`#DC2626`) for gap in seq 1/vertical, green (`#009E73`) for gap in seq 2/horizontal — consistent across linear and affine modes
+- `state-color` map defines colours shared by both SVG renderers and algorithm detail headings
+- `arrow-color` derives direction from IR coordinates (`from` = current cell, `to` = predecessor)
+- Affine mode: state toggle (All/V'M/V'X/V'Y/Optimal) controls both SVG opacity and algorithm detail highlighting
+- `help-toggle` component provides contextual (?) popups with optional `:align :right` for edge placement
+- `collapsible` component for expandable educational sections
+- Panel headers use `bg-nus-slate` (lighter blue); page header uses `bg-nus-navy` (deep blue)
+- Mobile responsive: flex layouts stack vertically, toggle buttons wrap, help popups constrained to viewport
 - Real-time alignment computation as parameters change
 
 ### File Structure
 - `src/pairwise/`: Core Clojure/ClojureScript source code
 - `resources/data/`: Standard scoring matrices (BLOSUM, PAM)
-- `resources/public/`: Web assets and compiled JavaScript
-- `demo/`: Standalone demo build output
+- `resources/public/`: Web assets and compiled JavaScript (includes Tailwind/KaTeX CDN config in `index.html`)
+- `resources/public/css/style.css`: Minimal custom CSS (mostly handled by Tailwind)
+- `demo/`: Standalone demo build output (mirrors `resources/public/index.html`)
+- `plans/`: Design documents and implementation plans
 - `test/`: Unit tests
 
-### Visualization IR
+### Visualisation IR
 - **pairwise.viz-model** produces a renderer-agnostic intermediate representation from alignment results
 - IR is a map with `:dimensions`, `:sequences`, and `:instructions` (a flat vector of typed instruction maps)
 - Linear instruction types: `:grid`, `:seq-label`, `:cell-score`, `:dp-arrow`, `:path-arrow`
 - Affine instruction types: `:grid`, `:seq-label`, `:cell-score`, `:state-scores`, `:state-arrow`, `:decomposition-phase`
-- `:state-scores` carries per-cell `:vm`, `:vx`, `:vy` values for three-state visualization
+- `:state-scores` carries per-cell `:vm`, `:vx`, `:vy` values for three-state visualisation
 - `:state-arrow` carries `:from-state`/`:to-state` (`:M`/`:X`/`:Y`) and `:arrow-type` (`:dp`/`:optimal`)
 - `:decomposition-phase` enables Beamer layer decomposition — three overlay slides highlighting one state each
 - Each instruction carries grid coordinates (row/col) — renderers convert to pixels or TikZ units
+- In the IR, `:from-row`/`:from-col` is the current cell; `:to-row`/`:to-col` is the predecessor
 - `:step` numbers on instructions enable Beamer overlays (TikZ) and could enable web animation
 - Both `tikz-view` and `webapp` consume this IR via `render-instruction` multimethods dispatching on `:type`
 - Affine SVG renderers are called directly with extra args (`cs`, `active-state`) for the layer toggle
@@ -84,6 +100,6 @@ This is a Clojure/ClojureScript library for pairwise sequence comparison using d
 - `:affine`: Gap of length k costs d + (k-1)*e (Durbin et al. convention; opening penalty d, extension penalty e). Uses the three-state recurrence (V'M, V'X, V'Y) with per-state traceback and a state-expanded graph (`[row col :M/:X/:Y]` nodes). This is equivalent to the SS-2 algorithm of Altschul and Erickson (1986), which correctly finds all optimal alignments — unlike Gotoh's original (1982) algorithm, which can miss the optimum due to incomplete traceback information
 
 ### Sequence Validation
-- Input sequences are sanitized to valid protein characters
+- Input sequences are sanitised to valid protein characters
 - Invalid characters replaced with 'X'
-- Maximum sequence length limited to 10 characters in web interface (7 for affine mode)
+- Maximum sequence length limited to 10 characters in web interface
