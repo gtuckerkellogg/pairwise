@@ -51,24 +51,39 @@
 ;; IR instruction renderers (SVG / Hiccup)
 ;; ---------------------------------------------------------------------------
 
+(def ^:private state-color {:M "#56B4E9" :X "#DC2626" :Y "#009E73"})
+
 (defmulti render-instruction
   "Render a single IR instruction as Hiccup SVG."
   :type)
 
-(defmethod render-instruction :dp-arrow [{:keys [from-row from-col to-row to-col]}]
+(defn- arrow-color
+  "Determine arrow colour from direction: diagonal=match (blue), vertical=gap in
+   top sequence (red), horizontal=gap in bottom sequence (green).
+   In the IR, from-row/col is the current cell; to-row/col is the predecessor."
+  [{:keys [from-row from-col to-row to-col]}]
+  (let [dr (- from-row to-row)
+        dc (- from-col to-col)]
+    (cond
+      (and (pos? dr) (pos? dc)) (state-color :M)  ; diagonal — match/mismatch
+      (and (pos? dr) (zero? dc)) (state-color :X)  ; vertical — gap in top seq
+      :else (state-color :Y))))                     ; horizontal — gap in bottom seq
+
+(defmethod render-instruction :dp-arrow [{:keys [from-row from-col to-row to-col] :as inst}]
   (let [x1 (+ half-cell (* from-col cell-size))
         y1 (+ half-cell (* from-row cell-size))
         x2 (+ half-cell (* to-col cell-size))
         y2 (+ half-cell (* to-row cell-size))]
-    [:line {:stroke "#9CA3AF" :stroke-width 1.5 :opacity 0.6
+    [:line {:stroke (arrow-color inst) :stroke-width 1.5 :opacity 0.5
             :x1 x1 :x2 x2 :y1 y1 :y2 y2}]))
 
-(defmethod render-instruction :path-arrow [{:keys [from-row from-col to-row to-col]}]
+(defmethod render-instruction :path-arrow [{:keys [from-row from-col to-row to-col] :as inst}]
   (let [x1 (+ half-cell (* from-col cell-size))
         y1 (+ half-cell (* from-row cell-size))
         x2 (+ half-cell (* to-col cell-size))
         y2 (+ half-cell (* to-row cell-size))]
-    [:line {:stroke "#DC2626" :stroke-width 4 :x1 x1 :x2 x2 :y1 y1 :y2 y2}]))
+    [:line {:stroke (arrow-color inst) :stroke-width 4
+            :x1 x1 :x2 x2 :y1 y1 :y2 y2}]))
 
 (defn- render-mask [{:keys [row col]}]
   (let [cx (+ half-cell (* col cell-size))
@@ -112,8 +127,6 @@
       :X [quarter (- quarter)]
       :M [0 0]
       :Y [(- quarter) quarter])))
-
-(def ^:private state-color {:M "#56B4E9" :X "#E69F00" :Y "#009E73"})
 
 (defn- render-state-scores [{:keys [row col vm vx vy]} cs active-state optimal-cells]
   (let [cx (+ (/ cs 2) (* col cs))
@@ -256,8 +269,8 @@
         input-cls "w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-nus-navy focus:border-nus-navy"]
     [:div
      ;; --- Input sequences ---
-     [:div {:class "rounded-lg border border-nus-navy overflow-hidden mb-4"}
-      [:div {:class "bg-nus-navy text-white px-4 py-2 text-sm font-semibold"}
+     [:div {:class "rounded-lg border border-nus-slate overflow-hidden mb-4"}
+      [:div {:class "bg-nus-slate text-white px-4 py-2 text-sm font-semibold"}
        "Input two sequences (up to 10 letters each)"]
       [:div {:class "px-4 py-3"}
        (row "Sequence 1"
@@ -276,8 +289,8 @@
                                                 (sub/sanitise (-> % .-target .-value)))}])]]
 
      ;; --- Alignment type ---
-     [:div {:class "rounded-lg border border-nus-navy overflow-hidden mb-4"}
-      [:div {:class "bg-nus-navy text-white px-4 py-2 text-sm font-semibold"}
+     [:div {:class "rounded-lg border border-nus-slate overflow-hidden mb-4"}
+      [:div {:class "bg-nus-slate text-white px-4 py-2 text-sm font-semibold"}
        "Alignment type"
        [help-toggle
         "Global alignment (Needleman-Wunsch) finds the best end-to-end alignment(s) of both complete sequences. Local alignment (Smith-Waterman) finds the highest-scoring subsequence pair(s) \u2014 useful when only part of the sequences are related. When multiple paths through the matrix achieve the same optimal score, all optimal alignments are reported."]]
@@ -289,8 +302,8 @@
                     #(update-state! app-state :alignment-type :local))]]]
 
      ;; --- Algorithm parameters ---
-     [:div {:class "rounded-lg border border-nus-navy mb-4"}
-      [:div {:class "bg-nus-navy text-white px-4 py-2 text-sm font-semibold rounded-t-lg"} "Algorithm Parameters"]
+     [:div {:class "rounded-lg border border-nus-slate mb-4"}
+      [:div {:class "bg-nus-slate text-white px-4 py-2 text-sm font-semibold rounded-t-lg"} "Algorithm Parameters"]
       [:div {:class "px-4 py-3"}
 
        ;; Scoring matrix type
@@ -385,15 +398,17 @@
    (name sequence-type) " alignment score: "
    [:strong (:score result)]])
 
-(defn color-legend []
-  [:div {:class "mb-2 text-sm flex flex-wrap items-center gap-2 sm:gap-4"}
-   [:span "State-aware arrows:"]
-   (for [[state label] [[:M "V'M"] [:X "V'X"] [:Y "V'Y"]]]
-     ^{:key state}
-     [:span {:class "flex items-center gap-1"}
-      [:span {:class "inline-block w-3 h-3 border border-gray-500"
-              :style {:background-color (state-color state)}}]
-      label])])
+(defn color-legend [affine?]
+  (let [labels (if affine?
+                 [[:M "V\u2032M (match)"] [:X "V\u2032X (gap in seq 1)"] [:Y "V\u2032Y (gap in seq 2)"]]
+                 [[:M "Diagonal (match)"] [:X "Vertical (gap in seq 1)"] [:Y "Horizontal (gap in seq 2)"]])]
+    [:div {:class "mb-2 text-sm flex flex-wrap items-center justify-center gap-2 sm:gap-4"}
+     (for [[state label] labels]
+       ^{:key state}
+       [:span {:class "flex items-center gap-1"}
+        [:span {:class "inline-block w-3 h-3 border border-gray-500"
+                :style {:background-color (state-color state)}}]
+        label])]))
 
 (defn state-toggle [app-state]
   (let [active (or (:active-state @app-state) :all)]
@@ -430,39 +445,62 @@
 (defn introduction-section []
   [:div {:class "flex flex-col md:flex-row gap-4 mb-6"}
    [:div {:class "md:w-1/2"}
-    [collapsible "About this tool" false
+    [collapsible "The sequence alignment problem" false
      [:p {:class "mb-3"}
+      "Sequence similarity often implies shared evolutionary origin (homology); "
+      [:span {:class "italic" } "aligning" ] " sequences to maximise their shared similarity "
+      "is fundamental to interpretation. In addition, aligning protein or DNA sequences "
+      "reveals conserved regions that may share function or structure. "
+      "Pairwise alignment is the foundation of database search tools like "
+      "BLAST and FASTA, multiple sequence alignment, high throughput sequencing analysis, "
+      "and phylogenetic analysis."]
+      [:p {:class "mb-3"}
       "Pairwise alignment compares two biological sequences to identify regions of similarity. "
       "Using dynamic programming, we fill a scoring matrix where each cell represents the best "
       "alignment score up to that point. The optimal alignment(s) are found by tracing back "
       "through the matrix. When multiple paths achieve the same score, all optimal alignments "
-      "are reported."]
+      "are reported. "
+      "The dynamic programming approach guarantees finding the mathematically optimal "
+      "alignment(s) given a scoring scheme, unlike heuristic methods that trade optimality "
+      "for speed."]
       [:p {:class "mb-3"}
-      "Students learning about parwise sequence alignment often study visualisations of the dynamic programming "
-      "matrix, but these visualisations are usually static and restricted to a single problem. "
-      [:strong "This tool provides interactive visualisations of landmark dynamic programming algorithms "]
-      "for pairwise alignment, allowing students and instructors to change scoring systems and sequences."
-      ]
-     [:p {:class "mb-3"}
       "Two classical algorithms solve this problem: "
       [:strong "Needleman-Wunsch"] " (1970) for global alignment (comparing sequences end-to-end) and "
       [:strong "Smith-Waterman"] " (1981) for local alignment (finding the highest-scoring subsequence pair). "
       "Both can use either a simple " [:strong "linear gap penalty"] " or the more realistic "
       [:strong "affine gap model"] " (Gotoh, 1982, corrected by Altschul and Erikson 1986), which distinguishes between opening and extending a gap."]
-     [:p {:class "italic text-gray-500"}
+      ]]
+  [:div {:class "md:w-1/2"}
+    [collapsible "About this tool" false
+    [:p {:class "mb-3"}
+      "Students learning about parwise sequence alignment often study visualisations of the dynamic programming "
+      "matrix, but these visualisations are usually static and restricted to a single problem. "
+      [:strong "This tool provides interactive visualisations of landmark dynamic programming algorithms "]
+      "for pairwise alignment. Students and instructors can change algorithms, scoring systems, and "
+      "input sequences, and instantly visualise the changes not just in resulting alignments but in the "
+      "dynamic programming matrices used by the underlying algorithm."]
+   
+    [:p {:class "mb-3"}
+      "This tool supports both global (Needleman-Wunsch) and local (Smith-Waterman) alignment, and either linear or affine gap penalties. "
+      "The affine gap algorithm is that of Altschul and Erickson 1986. Pop-up information is available throughout the "
+      "application.  Currently a range of standard protein substitution matrices are supported, as well as user-defined "
+      "scoring systems that might be preferred for initial classroom exercises."]
+    
+    [:p {:class "mb-3"}
+     [:strong "Notes for instructors. "]
+      "The code is written in Clojure/ClojureScript; the underlying algorithms compile to JavaScript "
+      "for the web application and onto the JVM for the command line application. The web application transpiles "
+      "the data for the dynamic programming matrix into SVG for the real-time visualisation. "
+      "The command line tool can be used to transpile the dynamic proggramming matrix into a LaTeX file. "
+      "When compiled by LaTeX, this will produce a PDF slide show with one slide per step of the "
+      "dynamic programming solution to support in-class exercises. Note: the LaTeX file uses "
+      "the standalone class so that instructors using Beamer can incorporate it directly into "
+      "their own Beamer presentations."    
+    ]
+    [:p {:class "italic text-gray-500"}
       "The default sequences (HEAGAWGHEE / PAWHEAE) and BLOSUM50 matrix reproduce the example "
       "from Durbin et al. (1998), Ch. 2."]]]
-   [:div {:class "md:w-1/2"}
-    [collapsible "Why align sequences?" false
-     [:p {:class "mb-3"}
-      "Sequence similarity often implies shared evolutionary origin (homology). "
-      "Aligning protein or DNA sequences reveals conserved regions that may share function "
-      "or structure. Pairwise alignment is the foundation of database search tools like "
-      "BLAST and FASTA, multiple sequence alignment, and phylogenetic analysis."]
-     [:p
-      "The dynamic programming approach guarantees finding the mathematically optimal "
-      "alignment(s) given a scoring scheme, unlike heuristic methods that trade optimality "
-      "for speed."]]]])
+])
 
 ;; ---------------------------------------------------------------------------
 ;; Algorithm details (reactive to tool state)
@@ -547,7 +585,7 @@
   [global? highlight?]
   [:div {:class "mb-4"}
    [:h4 {:class (str "text-sm font-semibold mb-1 " (if highlight? "text-gray-800" "text-gray-400"))}
-    [:span {:style {:color (when highlight? "#E69F00")}} "V\u2032X"]
+    [:span {:style {:color (when highlight? "#DC2626")}} "V\u2032X"]
     " \u2014 gap in top sequence"]
    (when highlight?
      [:p {:class "text-sm text-gray-600 mb-2"}
@@ -650,10 +688,18 @@
       [:div {:class "flex flex-col min-h-screen"}
        ;; Header
        [:header {:class "bg-nus-navy text-white py-4"}
-        [:div {:class "max-w-6xl mx-auto px-4"}
-         [:h1 {:class "text-2xl font-bold"} "Pairwise Sequence Alignment"]
-         [:p {:class "text-sm sm:text-lg" :style {:color "#EF7C00"}}
-          "Interactive visualisation of dynamic programming alignment algorithms"]]]
+        [:div {:class "max-w-6xl mx-auto px-4 flex items-center justify-between"}
+         [:div
+          [:h1 {:class "text-2xl font-bold"} "Pairwise Sequence Alignment"]
+          [:p {:class "text-sm sm:text-lg font-semibold" :style {:color "#EF7C00"}}
+           "Interactive visualisation of dynamic programming alignment algorithms"]]
+         [:a {:href "https://github.com/gtuckerkellogg/pairwise"
+              :target "_blank" :rel "noopener noreferrer"
+              :class "text-white hover:text-nus-orange transition-colors ml-4"
+              :title "View source on GitHub"}
+          [:svg {:xmlns "http://www.w3.org/2000/svg" :width "28" :height "28"
+                 :viewBox "0 0 24 24" :fill "currentColor"}
+           [:path {:d "M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"}]]]]]
 
        ;; Main content
        [:main {:class "max-w-6xl mx-auto px-4 py-4 flex-1 w-full"}
@@ -673,10 +719,9 @@
               [help-toggle
                (if (= :affine (:gap-model @app-state))
                  "Each cell shows scores from three superimposed matrices: V\u2032M (match/mismatch), V\u2032X (gap in top sequence), and V\u2032Y (gap in bottom sequence). Use the toggles to focus on one matrix at a time, or select Optimal to highlight the best path(s). The recurrences and further details are below the matrix."
-                 "Each cell shows the best alignment score up to that point. Grey arrows show all possible predecessors; red arrows trace the optimal path(s). The recurrence and further details are below the matrix.")
+                 "Each cell shows the best alignment score up to that point. Arrows are colour-coded by direction: diagonal (match/mismatch), vertical (gap in sequence 1), horizontal (gap in sequence 2). Optimal path arrows are thicker. The recurrence and further details are below the matrix.")
                :align :right]]
-             (when (= :affine (:gap-model @app-state))
-               [color-legend])
+             [color-legend (= :affine (:gap-model @app-state))]
              (when (= :affine (:gap-model @app-state))
                [state-toggle app-state])
              [:div (svg-component @app-state)]
@@ -701,7 +746,11 @@
        [:footer {:class "mt-12 py-6 border-t border-gray-200 text-center text-sm text-gray-500"}
         [:p "Created by "
          [:a {:href "mailto:dbsgtk@nus.edu.sg"
-              :class "text-nus-navy hover:underline"} "Greg Tucker-Kellogg"]]]])))
+              :class "text-nus-navy hover:underline"} "Greg Tucker-Kellogg"]
+         " \u00b7 "
+         [:a {:href "https://github.com/gtuckerkellogg/pairwise"
+              :target "_blank" :rel "noopener noreferrer"
+              :class "text-nus-navy hover:underline"} "Source on GitHub"]]]])))
 
 (defn init []
   (rdom/render [page]
