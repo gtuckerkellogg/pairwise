@@ -128,12 +128,13 @@
       :M [0 0]
       :Y [(- quarter) quarter])))
 
-(defn- render-state-scores [{:keys [row col vm vx vy]} cs active-state optimal-cells]
+(defn- render-state-scores [{:keys [row col vm vx vy]} cs active-state optimal-cells local?]
   (let [cx (+ (/ cs 2) (* col cs))
         cy (+ (/ cs 2) (* row cs))
         quarter (/ cs 4)
         mask-r (* cs 0.2)
         font-size (str (* cs 0.20) "px")
+        all-nil? (and (nil? vm) (nil? vx) (nil? vy))
         opacity (fn [state] (cond
                               (= active-state :optimal)
                               (if (contains? optimal-cells [row col state]) 1.0 0.3)
@@ -152,14 +153,24 @@
     [:g
      [:rect {:x (* col cs) :y (* row cs) :width cs :height cs
              :fill "none" :stroke "gray" :stroke-width 0.2}]
-     ;; White masks behind scores (rendered before text, after arrows)
-     (mask vx quarter (- quarter))
-     (mask vm 0 0)
-     (mask vy (- quarter) quarter)
-     ;; Score text
-     (draw-val vx :X quarter (- quarter))
-     (draw-val vm :M 0 0)
-     (draw-val vy :Y (- quarter) quarter)]))
+     (if (and local? all-nil?)
+       ;; Smith-Waterman zero floor: show 0 when all states are nil
+       (list
+        [:circle {:cx cx :cy cy :r mask-r :fill "white"}]
+        [:text {:x cx :y cy
+                :text-anchor "middle" :alignment-baseline "middle"
+                :font-family "Verdana, Arial, Helvetica, sans-serif" :font-size font-size
+                :fill "gray" :opacity 0.5} 0])
+       ;; Normal rendering: per-state scores
+       (list
+        ;; White masks behind scores (rendered before text, after arrows)
+        (mask vx quarter (- quarter))
+        (mask vm 0 0)
+        (mask vy (- quarter) quarter)
+        ;; Score text
+        (draw-val vx :X quarter (- quarter))
+        (draw-val vm :M 0 0)
+        (draw-val vy :Y (- quarter) quarter)))]))
 
 (defn- render-state-arrow [{:keys [from-row from-col from-state
                                     to-row to-col to-state
@@ -218,7 +229,8 @@
      (if affine?
        (list
         (map #(render-state-arrow % cs active-state) (:state-arrow by-type))
-        (map #(render-state-scores % cs active-state optimal-cells) (:state-scores by-type))
+        (let [local? (= :local (:alignment-type app-state))]
+          (map #(render-state-scores % cs active-state optimal-cells local?) (:state-scores by-type)))
         (map #(render-seq-label-with-cs % cs) (:seq-label by-type)))
        (list
         (map render-instruction (:dp-arrow by-type))
@@ -269,8 +281,8 @@
         input-cls "w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-nus-navy focus:border-nus-navy"]
     [:div
      ;; --- Input sequences ---
-     [:div {:class "rounded-lg border border-nus-slate overflow-hidden mb-4"}
-      [:div {:class "bg-nus-slate text-white px-4 py-2 text-sm font-semibold"}
+     [:div {:class "rounded-lg border border-nus-slate mb-4"}
+      [:div {:class "bg-nus-slate text-white px-4 py-2 text-sm font-semibold rounded-t-lg"}
        "Input two sequences (up to 10 letters each)"]
       [:div {:class "px-4 py-3"}
        (row "Sequence 1"
@@ -289,8 +301,8 @@
                                                 (sub/sanitise (-> % .-target .-value)))}])]]
 
      ;; --- Alignment type ---
-     [:div {:class "rounded-lg border border-nus-slate overflow-hidden mb-4"}
-      [:div {:class "bg-nus-slate text-white px-4 py-2 text-sm font-semibold"}
+     [:div {:class "rounded-lg border border-nus-slate mb-4"}
+      [:div {:class "bg-nus-slate text-white px-4 py-2 text-sm font-semibold rounded-t-lg"}
        "Alignment type"
        [help-toggle
         "Global alignment (Needleman-Wunsch) finds the best end-to-end alignment(s) of both complete sequences. Local alignment (Smith-Waterman) finds the highest-scoring subsequence pair(s) \u2014 useful when only part of the sequences are related. When multiple paths through the matrix achieve the same optimal score, all optimal alignments are reported."]]
