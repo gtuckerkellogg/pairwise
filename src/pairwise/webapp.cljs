@@ -491,7 +491,7 @@
       "The code is written in Clojure/ClojureScript; the underlying algorithms compile to JavaScript "
       "for the web application and onto the JVM for the command line application. The web application transpiles "
       "the data for the dynamic programming matrix into SVG for the real-time visualisation. "
-      "The command line tool can be used to transpile the dynamic proggramming matrix into a LaTeX file. "
+      "The command line tool can be used to transpile the dynamic programming matrix into a LaTeX file. "
       "When compiled by LaTeX, this will produce a PDF slide show with one slide per step of the "
       "dynamic programming solution to support in-class exercises. Note: the LaTeX file uses "
       "the standalone class so that instructors using Beamer can incorporate it directly into "
