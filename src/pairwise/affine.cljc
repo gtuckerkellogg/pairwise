@@ -38,7 +38,9 @@
                        (some? (:vm prev)) (conj [(+ (:vm prev) s) [prev-row prev-col :M]])
                        (some? (:vx prev)) (conj [(+ (:vx prev) s) [prev-row prev-col :X]])
                        (some? (:vy prev)) (conj [(+ (:vy prev) s) [prev-row prev-col :Y]])
-                       (= type :local)    (conj [s nil]))  ;; free restart: 0 + s
+                       ;; Free restart: 0 + s, tracing back to predecessor so
+                       ;; path-to-alignment emits the residues at this cell
+                       (= type :local)    (conj [s [prev-row prev-col :M]]))
           result   (best-candidate candidates)]
       (when result
         (if (and (= type :local) (neg? (:score result)))
@@ -47,33 +49,41 @@
 
 (defn- score-vx
   "V'X recurrence: vertical gap (gap in s1).
-   V'X[i,j] = max(V'M[i-1,j] - d, V'X[i-1,j] - e)"
+   V'X[i,j] = max(V'M[i-1,j] - d, V'X[i-1,j] - e)
+   Semi-global: free leading gaps in s2 via V'X on col 0."
   [D row col {:keys [d e]} type]
   (if (zero? row)
     nil
-    (let [prev     (get-in D [(dec row) col])
-          prev-row (dec row)
-          candidates (cond-> []
-                       (some? (:vm prev)) (conj [(- (:vm prev) d) [prev-row col :M]])
-                       (some? (:vx prev)) (conj [(- (:vx prev) e) [prev-row col :X]]))]
-      (when-let [result (best-candidate candidates)]
-        (when-not (and (= type :local) (neg? (:score result)))
-          result)))))
+    (if (and (= type :semiglobal) (zero? col))
+      ;; Free leading vertical gaps on col 0 for semi-global
+      {:score 0 :sources [nil]}
+      (let [prev     (get-in D [(dec row) col])
+            prev-row (dec row)
+            candidates (cond-> []
+                         (some? (:vm prev)) (conj [(- (:vm prev) d) [prev-row col :M]])
+                         (some? (:vx prev)) (conj [(- (:vx prev) e) [prev-row col :X]]))]
+        (when-let [result (best-candidate candidates)]
+          (when-not (and (= type :local) (neg? (:score result)))
+            result))))))
 
 (defn- score-vy
   "V'Y recurrence: horizontal gap (gap in s2).
-   V'Y[i,j] = max(V'M[i,j-1] - d, V'Y[i,j-1] - e)"
+   V'Y[i,j] = max(V'M[i,j-1] - d, V'Y[i,j-1] - e)
+   Semi-global/overlap: free leading gaps in s1 via V'Y on row 0."
   [D row col {:keys [d e]} type]
   (if (zero? col)
     nil
-    (let [prev     (get-in D [row (dec col)])
-          prev-col (dec col)
-          candidates (cond-> []
-                       (some? (:vm prev)) (conj [(- (:vm prev) d) [row prev-col :M]])
-                       (some? (:vy prev)) (conj [(- (:vy prev) e) [row prev-col :Y]]))]
-      (when-let [result (best-candidate candidates)]
-        (when-not (and (= type :local) (neg? (:score result)))
-          result)))))
+    (if (and (#{:semiglobal :overlap} type) (zero? row))
+      ;; Free leading horizontal gaps on row 0
+      {:score 0 :sources [nil]}
+      (let [prev     (get-in D [row (dec col)])
+            prev-col (dec col)
+            candidates (cond-> []
+                         (some? (:vm prev)) (conj [(- (:vm prev) d) [row prev-col :M]])
+                         (some? (:vy prev)) (conj [(- (:vy prev) e) [row prev-col :Y]]))]
+        (when-let [result (best-candidate candidates)]
+          (when-not (and (= type :local) (neg? (:score result)))
+            result))))))
 
 (defn- collect-display-info
   "Combine per-state results into display :from and :direction lists (coordinate-only)."
@@ -154,13 +164,29 @@
 
 (defmethod alignment/alignment-score :affine
   [_gap-model D type]
-  (cond
-    (= type :global)
-    (let [last-cell (get-in D [(dec (count D)) (dec (count (first D)))])]
-      (apply max (filter some? [(:vm last-cell) (:vx last-cell) (:vy last-cell)])))
+  (let [nrows (count D)
+        ncols (count (first D))
+        last-row (dec nrows)
+        last-col (dec ncols)
+        cell-max (fn [cell]
+                   (when-let [scores (seq (filter some? [(:vm cell) (:vx cell) (:vy cell)]))]
+                     (apply max scores)))]
+    (case type
+      :global
+      (cell-max (get-in D [last-row last-col]))
 
-    (= type :local)
-    (apply max (for [row D, cell row, :when (:score cell)] (:score cell)))))
+      :local
+      (apply max (for [row D, cell row, :when (:score cell)] (:score cell)))
+
+      :semiglobal
+      (apply max (filter some?
+                         (concat
+                          (map #(cell-max (get-in D [last-row %])) (range ncols))
+                          (map #(cell-max (get-in D [% last-col])) (range nrows)))))
+
+      :overlap
+      (apply max (filter some?
+                         (map #(cell-max (get-in D [% last-col])) (range nrows)))))))
 
 (defn- best-state-at
   "Return the state keyword(s) with the highest score at a cell."
@@ -172,35 +198,64 @@
 
 (defmethod alignment/get-starting :affine
   [_gap-model D type]
-  (cond
-    (= type :global)
-    (let [last-cell (get-in D [(dec (count D)) (dec (count (first D)))])
-          r (dec (count D))
-          c (dec (count (first D)))]
-      (mapv #(vector r c %) (best-state-at last-cell)))
+  (let [nrows (count D)
+        ncols (count (first D))
+        last-row (dec nrows)
+        last-col (dec ncols)]
+    (case type
+      :global
+      (let [last-cell (get-in D [last-row last-col])]
+        (mapv #(vector last-row last-col %) (best-state-at last-cell)))
 
-    (= type :local)
-    (let [top-score (alignment/alignment-score :affine D type)]
-      (for [r (range (count D))
-            c (range (count (first D)))
-            :let [cell (get-in D [r c])]
-            :when (= top-score (:score cell))
-            state (best-state-at cell)]
-        [r c state]))))
+      :local
+      (let [top-score (alignment/alignment-score :affine D type)]
+        (for [r (range nrows)
+              c (range ncols)
+              :let [cell (get-in D [r c])]
+              :when (= top-score (:score cell))
+              state (best-state-at cell)]
+          [r c state]))
+
+      :semiglobal
+      (let [top-score (alignment/alignment-score :affine D type)
+            edge-cells (distinct (concat
+                                  (for [c (range ncols)] [last-row c])
+                                  (for [r (range nrows)] [r last-col])))]
+        (for [[r c] edge-cells
+              :let [cell (get-in D [r c])]
+              :when (some? (:score cell))
+              state (best-state-at cell)
+              :when (= top-score (get cell ({:M :vm :X :vx :Y :vy} state)))]
+          [r c state]))
+
+      :overlap
+      (let [top-score (alignment/alignment-score :affine D type)]
+        (for [r (range nrows)
+              :let [cell (get-in D [r last-col])]
+              :when (some? (:score cell))
+              state (best-state-at cell)
+              :when (= top-score (get cell ({:M :vm :X :vx :Y :vy} state)))]
+          [r last-col state])))))
 
 (defmethod alignment/get-goalfn :affine
   [gap-model D type]
-  (cond
-    (= type :global)
+  (case type
+    :global
     (fn [node] (and (zero? (first node)) (zero? (second node))))
 
-    (= type :local)
+    :local
     (let [graph (alignment/graph-of gap-model D)]
       (fn [node]
         (let [entry (get graph node)]
           (or (nil? (:from entry))
               (empty? (:from entry))
-              (<= (:score entry) 0)))))))
+              (<= (:score entry) 0)))))
+
+    :semiglobal
+    (fn [node] (or (zero? (first node)) (zero? (second node))))
+
+    :overlap
+    (fn [node] (zero? (first node)))))
 
 (defmethod alignment/graph-of :affine
   [_gap-model D]

@@ -89,6 +89,15 @@
       (is (pos? (:score result)))
       (is (pos? (count (:alignments result)))))))
 
+(deftest local-affine-includes-first-match
+  (testing "Local affine traceback includes residues at the free-restart cell (A/A)"
+    (let [result (alignment/pairwise-align "HEAGAWGHEE" "PAWHEAE" blosum50
+                   {:d 12 :e 2}
+                   :type :local :gap-model :affine)
+          aln (first (:alignments result))]
+      (is (= "AWGHE" (:top aln)))
+      (is (= "AW-HE" (:bottom aln))))))
+
 (deftest local-alignment-finds-best-region
   (testing "Local affine alignment finds the best matching region"
     (let [;; Embed a strong match inside noise
@@ -131,3 +140,66 @@
       (is (contains? cell :vx))
       (is (contains? cell :vy))
       (is (contains? cell :score)))))
+
+;; ---------------------------------------------------------------------------
+;; Semi-global alignment tests (affine)
+;; ---------------------------------------------------------------------------
+
+(deftest semiglobal-affine-edge-cells-are-zero
+  (testing "Semi-global affine: row 0 and col 0 display scores are all zero"
+    (let [D (alignment/build-dp-matrix :affine simple-matrix {:d 8 :e 2}
+              "HEAGAWGHEE" "AWG" :type :semiglobal)]
+      ;; Row 0 should all be 0 (or nil at origin, which has vm=0)
+      (doseq [c (range (inc (count "HEAGAWGHEE")))]
+        (let [cell (get-in D [0 c])]
+          (is (or (zero? (or (:score cell) 0))
+                  (and (zero? c) (zero? (:vm cell))))
+              (str "Row 0, col " c " should be 0"))))
+      ;; Col 0 should all be 0
+      (doseq [r (range (inc (count "AWG")))]
+        (let [cell (get-in D [r 0])]
+          (is (or (zero? (or (:score cell) 0))
+                  (and (zero? r) (zero? (:vm cell))))
+              (str "Row " r ", col 0 should be 0")))))))
+
+(deftest semiglobal-affine-fit-short-in-long
+  (testing "Semi-global affine: fitting short sequence inside long gives positive score"
+    (let [result (alignment/pairwise-align "HEAGAWGHEE" "AWG" simple-matrix
+                   {:d 8 :e 2}
+                   :type :semiglobal :gap-model :affine)]
+      (is (pos? (:score result)))
+      (is (pos? (count (:alignments result)))))))
+
+;; ---------------------------------------------------------------------------
+;; Overlap alignment tests (affine)
+;; ---------------------------------------------------------------------------
+
+(deftest overlap-affine-row0-free
+  (testing "Overlap affine: row 0 has vy scores of 0 (free leading horizontal gaps)"
+    (let [S (sub/simple-substitution-matrix :dna :same 1 :different -1)
+          D (alignment/build-dp-matrix :affine S {:d 5 :e 1}
+              "GATTACA" "TACAGAT" :type :overlap)]
+      ;; Row 0: vy should be 0 for all cols > 0 (free leading gaps in s1)
+      (doseq [c (range 1 (inc (count "GATTACA")))]
+        (is (zero? (get-in D [0 c :vy]))
+            (str "Row 0, col " c " vy should be 0"))))))
+
+(deftest overlap-affine-col0-penalised
+  (testing "Overlap affine: col 0 has no free vx (s2 start penalised)"
+    (let [S (sub/simple-substitution-matrix :dna :same 1 :different -1)
+          D (alignment/build-dp-matrix :affine S {:d 5 :e 1}
+              "GATTACA" "TACAGAT" :type :overlap)]
+      ;; Col 0: vx should be nil or negative for rows > 0 (no free vertical gaps)
+      ;; Actually vx on col 0 should be nil because there's no free edge for overlap there
+      (doseq [r (range 1 (inc (count "TACAGAT")))]
+        (let [vx (get-in D [r 0 :vx])]
+          (is (or (nil? vx) (neg? vx))
+              (str "Row " r ", col 0 vx should not be zero/positive")))))))
+
+(deftest overlap-affine-finds-suffix-prefix
+  (testing "Overlap affine: finds suffix of s1 matching prefix of s2"
+    (let [S (sub/simple-substitution-matrix :dna :same 1 :different -1)
+          result (alignment/pairwise-align "GATTACA" "TACAGAT" S {:d 5 :e 1}
+                   :type :overlap :gap-model :affine)]
+      (is (pos? (:score result)))
+      (is (pos? (count (:alignments result)))))))

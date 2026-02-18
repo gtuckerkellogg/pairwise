@@ -34,6 +34,12 @@
     (into {} (map scoremap matrix))))
 
 (defn sanitise
-  "Transforms given sequence to one with only valid letters"
-  [input-seq]
-  (clojure.string/replace (clojure.string/upper-case input-seq) #"[^ACGTRNDQEHILKMFPSWYVBZX]" "X"))
+  "Transforms given sequence to one with only valid letters.
+   For :protein (default), invalid characters are replaced with X.
+   For :dna, non-ACGT characters are stripped."
+  ([input-seq] (sanitise input-seq :protein))
+  ([input-seq seq-type]
+   (let [upper (clojure.string/upper-case input-seq)]
+     (case seq-type
+       :dna     (clojure.string/replace upper #"[^ACGT]" "")
+       :protein (clojure.string/replace upper #"[^ACGTRNDQEHILKMFPSWYVBZX]" "X")))))

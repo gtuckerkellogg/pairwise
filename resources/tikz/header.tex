@@ -1,4 +1,4 @@
-\documentclass[beamer,handout]{standalone}
+\documentclass[beamer]{standalone}
 \usepackage{tikz}
 \usetikzlibrary{calc}
 \usepackage{ifthen}
@@ -34,13 +34,20 @@
 \tikzset{path step/.style={>=latex,draw=black!50,fill=black!50,thick}}
 \tikzset{optimal step/.style={>=latex,draw=black,fill=black,very thick}}
 \tikzset{optimal-but-non-identical step/.style={>=latex,draw=red,fill=red,very thick}}
-% Affine gap state styles — for arrows (draw) and score text (text color)
-\tikzset{state-M/.style={draw=blue!70, text=blue!70, thick}}
-\tikzset{state-X/.style={draw=green!60!black, text=green!60!black, thick}}
-\tikzset{state-Y/.style={draw=orange!80!red, text=orange!80!red, thick}}
-\tikzset{state-M-dim/.style={draw=blue!20, text=blue!20, thin}}
-\tikzset{state-X-dim/.style={draw=green!15, text=green!15, thin}}
-\tikzset{state-Y-dim/.style={draw=orange!20, text=orange!20, thin}}
+% Affine gap state styles — text nodes (no border, no fill background)
+\tikzset{text-M/.style={text=blue!70}}
+\tikzset{text-X/.style={text=green!60!black}}
+\tikzset{text-Y/.style={text=orange!80!red}}
+\tikzset{text-M-dim/.style={text=blue!30}}
+\tikzset{text-X-dim/.style={text=green!25}}
+\tikzset{text-Y-dim/.style={text=orange!30}}
+% Affine gap state styles — arrows (test with simpler colors)
+\tikzset{arrow-M/.style={>=latex,draw=blue,fill=blue,thick}}
+\tikzset{arrow-X/.style={>=latex,draw=green,fill=green,thick}}
+\tikzset{arrow-Y/.style={>=latex,draw=red,fill=red,thick}}
+\tikzset{arrow-M-dim/.style={>=latex,draw=blue!30,fill=blue!30,thin}}
+\tikzset{arrow-X-dim/.style={>=latex,draw=green!30,fill=green!30,thin}}
+\tikzset{arrow-Y-dim/.style={>=latex,draw=red!30,fill=red!30,thin}}
 % \begin{document}
 
 % \begin{standaloneframe}

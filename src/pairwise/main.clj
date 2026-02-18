@@ -43,20 +43,26 @@
     :default 1
     :parse-fn #(Double/parseDouble %)
     :id :gap-extend]
-   ["-t" "--type TYPE" "Alignment type: global or local"
+   ["-t" "--type TYPE" "Alignment type: global, local, semiglobal, or overlap"
     :default :global
     :parse-fn keyword
-    :validate [#(contains? #{:global :local} %) "Must be 'global' or 'local'"]
+    :validate [#(contains? #{:global :local :semiglobal :overlap} %) "Must be 'global', 'local', 'semiglobal', or 'overlap'"]
     :id :type]
+   ["-s" "--seq-type TYPE" "Sequence type: protein or dna"
+    :default :protein
+    :parse-fn keyword
+    :validate [#(contains? #{:protein :dna} %) "Must be 'protein' or 'dna'"]
+    :id :seq-type]
    ["-o" "--output FILE" "Output TikZ/LaTeX to FILE (default: print text alignment)"
     :id :output]
    ["-h" "--help" "Show this help message"]])
 
 (defn load-scoring-matrix
-  "Load a scoring matrix by name or create a simple one"
-  [matrix-name match mismatch]
+  "Load a scoring matrix by name or create a simple one.
+   seq-type (:protein or :dna) determines the alphabet for simple matrices."
+  [matrix-name match mismatch seq-type]
   (if (= matrix-name "simple")
-    (sub/simple-substitution-matrix :protein :same match :different mismatch)
+    (sub/simple-substitution-matrix seq-type :same match :different mismatch)
     (let [resource-path (str "data/" matrix-name ".txt")
           resource (io/resource resource-path)]
       (if resource
@@ -96,6 +102,9 @@
         (println "  # Affine gap alignment with BLOSUM50")
         (println "  pairwise -1 HEAGAWGHEE -2 PAWHEAE -m BLOSUM50 --gap-model affine --gap-open 12 --gap-extend 2")
         (println)
+        (println "  # DNA overlap alignment")
+        (println "  pairwise -1 GATTACA -2 TACAGAT -s dna -t overlap --match 2 --mismatch -3 -g 3")
+        (println)
         (println "  # Generate TikZ/LaTeX visualization")
         (println "  pairwise -1 ACGT -2 ACGT -o alignment.tex")
         (System/exit 0))
@@ -115,10 +124,10 @@
 
       :else
       (try
-        (let [{:keys [s1 s2 matrix match mismatch gap-penalty gap-model gap-open gap-extend type output]} options
-              s1-clean (sub/sanitise s1)
-              s2-clean (sub/sanitise s2)
-              scoring-matrix (load-scoring-matrix matrix match mismatch)
+        (let [{:keys [s1 s2 matrix match mismatch gap-penalty gap-model gap-open gap-extend type seq-type output]} options
+              s1-clean (sub/sanitise s1 seq-type)
+              s2-clean (sub/sanitise s2 seq-type)
+              scoring-matrix (load-scoring-matrix matrix match mismatch seq-type)
               gap-pen (if (= gap-model :affine)
                         {:d gap-open :e gap-extend}
                         gap-penalty)
@@ -154,6 +163,7 @@
                 (do (println "  Gap open:" gap-open)
                     (println "  Gap extend:" gap-extend))
                 (println "  Gap penalty:" gap-penalty))
+              (println "  Sequence type:" (name seq-type))
               (println "  Alignment type:" (name type))
               (println)
               (println (format-alignment result))

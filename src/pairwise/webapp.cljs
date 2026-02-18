@@ -33,7 +33,7 @@
 (defn app-results [app-state]
   (let [scoring-matrix (condp = (:scoring-matrix-type app-state)
                          :simple (sub/simple-substitution-matrix
-                                  :protein
+                                  (:sequence-type app-state)
                                   :same (:match-score app-state)
                                   :different (:mismatch-score app-state))
                          :standard (get-in scoring-matrices [(:scoring-matrix app-state) :matrix]))
@@ -276,42 +276,113 @@
   (swap! app-state assoc key value)
   (swap! app-state assoc :result (app-results @app-state)))
 
+(def ^:private dna-scoring-defaults
+  "Typical DNA scoring parameters (NCBI blastn convention)."
+  {:match-score 2 :mismatch-score -3
+   :gap-penalty 3 :gap-open 5 :gap-extend 2})
+
+(def ^:private protein-scoring-defaults
+  "Typical protein scoring parameters."
+  {:match-score 5 :mismatch-score -3
+   :gap-penalty 8 :gap-open 12 :gap-extend 2})
+
+(def ^:private alignment-type-defaults
+  "Default scoring parameters per alignment type. Protein types share the same
+   sequences so students can compare algorithm behaviour directly. Overlap
+   switches to DNA with illustrative suffix/prefix sequences."
+  {:global     (merge protein-scoring-defaults
+                      {:scoring-matrix-type :standard :sequence-type :protein
+                       :scoring-matrix :blosum50})
+   :local      (merge protein-scoring-defaults
+                      {:scoring-matrix-type :standard :sequence-type :protein
+                       :scoring-matrix :blosum50})
+   :semiglobal (merge protein-scoring-defaults
+                      {:scoring-matrix-type :standard :sequence-type :protein
+                       :scoring-matrix :blosum50})
+   :overlap    (merge dna-scoring-defaults
+                      {:top-seq "GATTACA" :bottom-seq "TACAGAT"
+                       :scoring-matrix-type :simple :sequence-type :dna})})
+
+(defn- switch-alignment-type! [app-state type-key]
+  (let [defaults (get alignment-type-defaults type-key)]
+    (swap! app-state merge {:alignment-type type-key} defaults)
+    (swap! app-state assoc :result (app-results @app-state))))
+
+(defn- switch-sequence-type! [app-state seq-type]
+  (let [current @app-state
+        scoring-defaults (if (= seq-type :dna) dna-scoring-defaults protein-scoring-defaults)
+        ;; If switching to DNA and currently using standard matrices, auto-switch to simple
+        new-matrix-type (if (and (= seq-type :dna) (= :standard (:scoring-matrix-type current)))
+                          :simple
+                          (:scoring-matrix-type current))
+        ;; Re-sanitise current sequences with the new alphabet
+        new-top (sub/sanitise (:top-seq current) seq-type)
+        new-bottom (sub/sanitise (:bottom-seq current) seq-type)]
+    (swap! app-state merge scoring-defaults
+           {:sequence-type seq-type
+            :scoring-matrix-type new-matrix-type
+            :top-seq new-top
+            :bottom-seq new-bottom})
+    (swap! app-state assoc :result (app-results @app-state))))
+
 (defn form-component [app-state]
   (let [state @app-state
+        dna? (= :dna (:sequence-type state))
         input-cls "w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-nus-navy focus:border-nus-navy"]
     [:div
      ;; --- Input sequences ---
      [:div {:class "rounded-lg border border-nus-slate mb-4"}
       [:div {:class "bg-nus-slate text-white px-4 py-2 text-sm font-semibold rounded-t-lg"}
-       "Input two sequences (up to 10 letters each)"]
+       "Input two sequences (up to 10 letters each)"
+       [help-toggle
+        (if dna?
+          "Enter DNA sequences using the four nucleotide letters: A, C, G, T. Non-nucleotide characters will be removed."
+          "Enter protein sequences using standard amino acid one-letter codes. Unrecognised characters will be replaced with X (unknown amino acid).")]]
       [:div {:class "px-4 py-3"}
+       ;; DNA / Protein toggle
+       [:div {:class "mb-3"}
+        [:div {:class "flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4"}
+         [:div {:class "sm:w-1/3 text-sm font-medium text-gray-700"}
+          [:label "Sequence Type"]
+          [help-toggle "DNA sequences use a 4-letter alphabet (A, C, G, T) and a simple match/mismatch scoring scheme. Protein sequences use 20+ amino acid letters and can use empirical substitution matrices (BLOSUM, PAM) derived from observed evolutionary substitutions."]]
+         [:div {:class "sm:w-2/3"}
+          [:div {:class "inline-flex rounded-md shadow-sm overflow-hidden"}
+           (toggle-btn "Protein" (not dna?)
+                       #(switch-sequence-type! app-state :protein))
+           (toggle-btn "DNA" dna?
+                       #(switch-sequence-type! app-state :dna))]]]]
        (row "Sequence 1"
             [:input {:class input-cls
                      :type "text"
                      :value (:top-seq state)
                      :max-length 10
                      :on-change #(update-state! app-state :top-seq
-                                                (sub/sanitise (-> % .-target .-value)))}])
+                                                (sub/sanitise (-> % .-target .-value)
+                                                              (:sequence-type @app-state)))}])
        (row "Sequence 2"
             [:input {:class input-cls
                      :type "text"
                      :value (:bottom-seq state)
                      :max-length 10
                      :on-change #(update-state! app-state :bottom-seq
-                                                (sub/sanitise (-> % .-target .-value)))}])]]
+                                                (sub/sanitise (-> % .-target .-value)
+                                                              (:sequence-type @app-state)))}])]]
 
      ;; --- Alignment type ---
      [:div {:class "rounded-lg border border-nus-slate mb-4"}
       [:div {:class "bg-nus-slate text-white px-4 py-2 text-sm font-semibold rounded-t-lg"}
        "Alignment type"
        [help-toggle
-        "Global alignment (Needleman-Wunsch) finds the best end-to-end alignment(s) of both complete sequences. Local alignment (Smith-Waterman) finds the highest-scoring subsequence pair(s) \u2014 useful when only part of the sequences are related. When multiple paths through the matrix achieve the same optimal score, all optimal alignments are reported."]]
+        "Global (Needleman-Wunsch): best end-to-end alignment of both complete sequences. Local (Smith-Waterman): highest-scoring subsequence pair(s). Semi-global: fits one sequence inside another (all edges free). Overlap: finds where a suffix of sequence 1 matches a prefix of sequence 2 (row 0 free, last column scanned). When multiple paths achieve the same optimal score, all optimal alignments are reported."]]
       [:div {:class "px-4 py-3"}
-       [:div {:class "inline-flex rounded-md shadow-sm overflow-hidden"}
-        (toggle-btn "Needleman-Wunsch" (= :global (:alignment-type state))
-                    #(update-state! app-state :alignment-type :global))
-        (toggle-btn "Smith-Waterman" (= :local (:alignment-type state))
-                    #(update-state! app-state :alignment-type :local))]]]
+       [:div {:class "inline-flex flex-wrap rounded-md shadow-sm overflow-hidden"}
+        (for [[type-key label] [[:global "Global (NW)"]
+                                [:local "Local (SW)"]
+                                [:semiglobal "Semi-global"]
+                                [:overlap "Overlap"]]]
+          ^{:key type-key}
+          (toggle-btn label (= type-key (:alignment-type state))
+                      #(switch-alignment-type! app-state type-key)))]]]
 
      ;; --- Algorithm parameters ---
      [:div {:class "rounded-lg border border-nus-slate mb-4"}
@@ -335,13 +406,14 @@
                     :checked (= :simple (:scoring-matrix-type state))
                     :on-change #(update-state! app-state :scoring-matrix-type :simple)}]
            "User-defined"]
-          [:label {:class "flex items-center gap-2 text-sm cursor-pointer"}
-           [:input {:type "radio"
-                    :name "scoring-matrix-type"
-                    :value "standard"
-                    :checked (= :standard (:scoring-matrix-type state))
-                    :on-change #(update-state! app-state :scoring-matrix-type :standard)}]
-           "Standard"]]]]
+          (when (not dna?)
+            [:label {:class "flex items-center gap-2 text-sm cursor-pointer"}
+             [:input {:type "radio"
+                      :name "scoring-matrix-type"
+                      :value "standard"
+                      :checked (= :standard (:scoring-matrix-type state))
+                      :on-change #(update-state! app-state :scoring-matrix-type :standard)}]
+             "Standard (protein only)"])]]]
 
        ;; Simple matrix sliders
        (when (= :simple (:scoring-matrix-type state))
@@ -406,9 +478,14 @@
   [:p {:class "font-mono text-sm"} top [:br] bottom [:br] [:br]])
 
 (defn summarize-alignment [{:keys [sequence-type alignment-type result]}]
-  [:span (str/capitalize (name alignment-type)) " "
-   (name sequence-type) " alignment score: "
-   [:strong (:score result)]])
+  (let [type-label (case alignment-type
+                     :global "Global"
+                     :local "Local"
+                     :semiglobal "Semi-global"
+                     :overlap "Overlap")]
+    [:span type-label " "
+     (case sequence-type :dna "DNA" "protein") " alignment score: "
+     [:strong (:score result)]]))
 
 (defn color-legend [affine?]
   (let [labels (if affine?
@@ -557,23 +634,35 @@
    [katex-math latex]])
 
 (defn- algorithm-details-linear [app-state]
-  (let [global? (= :global (:alignment-type @app-state))]
+  (let [atype (:alignment-type @app-state)]
     [:div
      [:p {:class "mb-3 text-sm text-gray-700 leading-relaxed"}
-      (if global?
-        "The Needleman-Wunsch algorithm fills the entire matrix to find the best global alignment. Each cell F(i,j) represents the optimal score for aligning the first i residues of one sequence with the first j residues of the other."
-        "The Smith-Waterman algorithm modifies the global recurrence by adding zero as an option \u2014 allowing alignments to start anywhere. Traceback begins at the highest-scoring cell(s) and stops when a zero is reached.")]
+      (case atype
+        :global "The Needleman-Wunsch algorithm fills the entire matrix to find the best global alignment. Each cell F(i,j) represents the optimal score for aligning the first i residues of one sequence with the first j residues of the other."
+        :local "The Smith-Waterman algorithm modifies the global recurrence by adding zero as an option \u2014 allowing alignments to start anywhere. Traceback begins at the highest-scoring cell(s) and stops when a zero is reached."
+        :semiglobal "Semi-global alignment uses the same recurrence as Needleman-Wunsch but with free leading and trailing gaps on both sequences. This is useful for fitting a short sequence inside a longer one. Traceback starts from the best cell on the last row or last column and ends at row 0 or column 0."
+        :overlap "Overlap alignment finds the best suffix-of-sequence-1 / prefix-of-sequence-2 match. Row 0 is free (sequence 1 prefix can be skipped), but column 0 is penalised (sequence 2 must start from the beginning). Traceback starts from the best cell on the last column and ends at row 0.")]
      [:div {:class "mt-3"}
       [:p {:class "mb-2 text-sm font-semibold text-gray-600"} "Initialisation:"]
       [recurrence-block
-       (if global?
-         "F(i, 0) = -i \\times d \\qquad F(0, j) = -j \\times d"
-         "F(i, 0) = 0 \\qquad F(0, j) = 0")]
+       (case atype
+         :global     "F(i, 0) = -i \\times d \\qquad F(0, j) = -j \\times d"
+         :local      "F(i, 0) = 0 \\qquad F(0, j) = 0"
+         :semiglobal "F(i, 0) = 0 \\qquad F(0, j) = 0"
+         :overlap    "F(i, 0) = -i \\times d \\qquad F(0, j) = 0")]
       [:p {:class "mb-2 text-sm font-semibold text-gray-600"} "Recurrence:"]
       [recurrence-block
-       (if global?
-         "F(i,j) = \\max \\begin{cases} F(i-1, j-1) + s(x_i, y_j) \\\\ F(i-1, j) - d \\\\ F(i, j-1) - d \\end{cases}"
-         "F(i,j) = \\max \\begin{cases} 0 \\\\ F(i-1, j-1) + s(x_i, y_j) \\\\ F(i-1, j) - d \\\\ F(i, j-1) - d \\end{cases}")]]]))
+       (case atype
+         :local "F(i,j) = \\max \\begin{cases} 0 \\\\ F(i-1, j-1) + s(x_i, y_j) \\\\ F(i-1, j) - d \\\\ F(i, j-1) - d \\end{cases}"
+         ;; Global, semi-global, and overlap share the same recurrence
+         "F(i,j) = \\max \\begin{cases} F(i-1, j-1) + s(x_i, y_j) \\\\ F(i-1, j) - d \\\\ F(i, j-1) - d \\end{cases}")]
+      (when (#{:semiglobal :overlap} atype)
+        [:div
+         [:p {:class "mb-2 text-sm font-semibold text-gray-600"} "Traceback:"]
+         [recurrence-block
+          (case atype
+            :semiglobal "\\text{Start: } \\max\\bigl(F(m, 0{:}n),\\; F(0{:}m, n)\\bigr) \\qquad \\text{Goal: row } 0 \\text{ or col } 0"
+            :overlap    "\\text{Start: } \\max\\bigl(F(0{:}m, n)\\bigr) \\qquad \\text{Goal: row } 0")]])]]))
 
 (defn- affine-recurrence-vm
   "V'M recurrence block."
@@ -624,7 +713,10 @@
 
 (defn- algorithm-details-affine [app-state]
   (let [active (or (:active-state @app-state) :all)
-        global? (= :global (:alignment-type @app-state))
+        atype (:alignment-type @app-state)
+        local? (= atype :local)
+        ;; For recurrence display, semi-global and overlap use the global recurrence (no zero-floor)
+        use-global-recurrence? (not local?)
         highlight? (fn [state]
                      (or (= active :all) (= active state)))]
     [:div
@@ -636,17 +728,20 @@
         ;; default for :all and individual states
         (str "The affine gap model uses three matrices that track the best score arriving via different states: "
              "V\u2032M (last columns matched), V\u2032X (gap in top sequence), V\u2032Y (gap in bottom sequence). "
-             (when (not global?)
-               "For local alignment, each state also includes 0 as an option, allowing alignments to begin anywhere. ")
+             (case atype
+               :local "For local alignment, each state also includes 0 as an option, allowing alignments to begin anywhere. "
+               :semiglobal "For semi-global alignment, leading gaps on both edges are free (V\u2032X on col 0 and V\u2032Y on row 0 are initialised to 0). "
+               :overlap "For overlap alignment, leading gaps in sequence 1 are free (V\u2032Y on row 0 is initialised to 0), but column 0 is penalised. "
+               "")
              "The gap opening penalty d is applied when transitioning from M to a gap state, "
              "while the extension penalty e is applied when continuing in a gap state."))]
 
      ;; Recurrences — all three shown, with highlighting based on active state
      (when (not= active :optimal)
        [:div {:class "mt-3"}
-        [affine-recurrence-vm global? (highlight? :M)]
-        [affine-recurrence-vx global? (highlight? :X)]
-        [affine-recurrence-vy global? (highlight? :Y)]])]))
+        [affine-recurrence-vm use-global-recurrence? (highlight? :M)]
+        [affine-recurrence-vx use-global-recurrence? (highlight? :X)]
+        [affine-recurrence-vy use-global-recurrence? (highlight? :Y)]])]))
 
 (defn algorithm-details [app-state]
   (case (:gap-model @app-state)

@@ -13,6 +13,8 @@
 
 (def header (load-header))
 
+(def ^:dynamic *max-progressive-step* nil)
+
 (defn scale-tikz [s1 s2]
   (let [scale (+ 2 (max (count s1) (count s2)))]
     (format "\\pgftransformscale{%3.2f}\n" (/ 8. scale))))
@@ -75,25 +77,31 @@
    :Y [ 0.3 -0.3]})  ;; lower-left
 
 (defmethod render-instruction :state-scores [{:keys [row col vm vx vy step]}]
-  (let [fmt (fn [val offset-key scale style]
+  (let [visibility (if *max-progressive-step*
+                     (format "%d-%d" step *max-progressive-step*)
+                     (format "%d-" step))
+        fmt (fn [val offset-key scale style]
               (when (some? val)
                 (let [[dr dc] (state-offset offset-key)]
-                  (format "\\visible<%d->{\\draw (%s,%s) node [draw=none,inner sep=1pt,scale=%s,%s] {%s};}\n"
-                          step (+ row dr) (+ col dc) scale style val))))]
-    [(fmt vx :X "0.35" "state-X")
-     (fmt vm :M "0.4" "state-M")
-     (fmt vy :Y "0.35" "state-Y")]))
+                  (format "\\visible<%s>{\\draw (%s,%s) node [fill=white,inner sep=1.5pt,scale=%s,%s] {%s};}\n"
+                          visibility (+ row dr) (+ col dc) scale style val))))]
+    [(fmt vx :X "0.35" "text-X")
+     (fmt vm :M "0.4" "text-M")
+     (fmt vy :Y "0.35" "text-Y")]))
 
 (defmethod render-instruction :state-arrow [{:keys [from-row from-col from-state
                                                      to-row to-col to-state
                                                      direction arrow-type step]}]
   (let [[from-dr from-dc] (state-offset from-state)
         [to-dr to-dc] (state-offset to-state)
+        visibility (if *max-progressive-step*
+                     (format "%d-%d" step *max-progressive-step*)
+                     (format "%d-" step))
         style (if (= arrow-type :optimal)
-                (str "state-" (name from-state) ",very thick")
-                (str "state-" (name from-state)))]
-    (format "\\visible<%d->{\\draw[->,>={latex},%s] (%s,%s) -- (%s,%s);}\n"
-            step style
+                (str "arrow-" (name from-state) ",very thick")
+                (str "arrow-" (name from-state)))]
+    (format "\\visible<%s>{\\draw[->,%s] (%s,%s) -- (%s,%s);}\n"
+            visibility style
             (+ from-row from-dr) (+ from-col from-dc)
             (+ to-row to-dr) (+ to-col to-dc))))
 
@@ -102,7 +110,7 @@
   [row col val offset-key scale style-suffix step]
   (when (some? val)
     (let [[dr dc] (state-offset offset-key)]
-      (format "\\visible<%d>{\\draw (%s,%s) node [draw=none,inner sep=1pt,scale=%s,%s] {%s};}\n"
+      (format "\\visible<%d>{\\draw (%s,%s) node [fill=white,inner sep=1.5pt,scale=%s,%s] {%s};}\n"
               step (+ row dr) (+ col dc) scale style-suffix val))))
 
 (defn- render-decomp-arrow
@@ -112,7 +120,7 @@
         [from-dr from-dc] (state-offset from-state)
         [to-dr to-dc] (state-offset to-state)
         width (if (= arrow-type :optimal) "very thick" "")]
-    (format "\\visible<%d>{\\draw[->,>={latex},%s%s] (%s,%s) -- (%s,%s);}\n"
+    (format "\\visible<%d>{\\draw[->,%s%s] (%s,%s) -- (%s,%s);}\n"
             step style-suffix (if (seq width) (str "," width) "")
             (+ from-row from-dr) (+ from-col from-dc)
             (+ to-row to-dr) (+ to-col to-dc))))
@@ -123,24 +131,24 @@
    (for [[idx highlight] (map-indexed vector states)
          :let [step (+ start-step idx)]]
      (str
-      ;; Render all scores — highlighted state at full style, others dimmed
-      (apply str
-        (for [{:keys [row col vm vx vy]} state-scores]
-          (str
-           (render-decomp-score row col vx :X "0.35"
-                                (if (= highlight :X) "state-X" "state-X-dim") step)
-           (render-decomp-score row col vm :M "0.4"
-                                (if (= highlight :M) "state-M" "state-M-dim") step)
-           (render-decomp-score row col vy :Y "0.35"
-                                (if (= highlight :Y) "state-Y" "state-Y-dim") step))))
-      ;; Render all arrows — highlighted state at full style, others dimmed
+      ;; Render all arrows first — highlighted state at full style, others dimmed
       (apply str
         (for [arrow state-arrows]
           (let [from-state (:from-state arrow)
                 style (if (= highlight from-state)
-                        (str "state-" (name from-state))
-                        (str "state-" (name from-state) "-dim"))]
-            (render-decomp-arrow arrow style step))))))))
+                        (str "arrow-" (name from-state))
+                        (str "arrow-" (name from-state) "-dim"))]
+            (render-decomp-arrow arrow style step))))
+      ;; Render all scores on top — highlighted state at full style, others dimmed
+      (apply str
+        (for [{:keys [row col vm vx vy]} state-scores]
+          (str
+           (render-decomp-score row col vx :X "0.35"
+                                (if (= highlight :X) "text-X" "text-X-dim") step)
+           (render-decomp-score row col vm :M "0.4"
+                                (if (= highlight :M) "text-M" "text-M-dim") step)
+           (render-decomp-score row col vy :Y "0.35"
+                                (if (= highlight :Y) "text-Y" "text-Y-dim") step))))))))
 
 (defmethod render-instruction :default [_inst]
   nil)
@@ -153,7 +161,11 @@
   "Generate a complete TikZ/LaTeX document for an alignment visualization."
   [alignments]
   (let [model (viz/alignment->instructions alignments)
-        content (flatten (map render-instruction (:instructions model)))]
+        max-prog (:max-progressive-step model)
+        content (if max-prog
+                  (binding [*max-progressive-step* max-prog]
+                    (flatten (map render-instruction (:instructions model))))
+                  (flatten (map render-instruction (:instructions model))))]
     (str/join (flatten (list header (->> (flatten content)
                                          (latex-env :tikzpicture)
                                          (latex-env :standaloneframe)

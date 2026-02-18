@@ -147,10 +147,12 @@
             st-path (state-path-arrows result)
             all-insts (concat [{:type :grid :rows rows :cols cols}]
                               (seq-labels s1 s2)
-                              st-scores st-dp st-path)
-            decomp-start (inc (max-step all-insts))]
+                              st-dp st-path st-scores)
+            decomp-start (inc (max-step all-insts))
+            max-progressive (dec decomp-start)]
         {:dimensions {:rows rows :cols cols}
          :sequences {:top s1 :left s2}
+         :max-progressive-step max-progressive
          :instructions
          (vec (concat all-insts
                       [{:type :decomposition-phase

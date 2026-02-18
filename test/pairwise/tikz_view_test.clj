@@ -39,9 +39,12 @@
       (is (str/includes? output "\\begin{document}"))
       (is (str/includes? output "\\begin{tikzpicture}"))
       ;; State-specific TikZ styles should be present in header
-      (is (str/includes? output "state-M"))
-      (is (str/includes? output "state-X"))
-      (is (str/includes? output "state-Y")))))
+      (is (str/includes? output "text-M"))
+      (is (str/includes? output "text-X"))
+      (is (str/includes? output "text-Y"))
+      (is (str/includes? output "arrow-M"))
+      (is (str/includes? output "arrow-X"))
+      (is (str/includes? output "arrow-Y")))))
 
 (deftest tikz-affine-has-decomposition-overlays
   (testing "Affine TikZ output includes layer decomposition overlays in body"
@@ -49,9 +52,9 @@
           ;; Header defines each -dim style once; body uses should add more
           count-occurrences (fn [s sub] (count (re-seq (re-pattern (java.util.regex.Pattern/quote sub)) s)))]
       ;; More than 1 occurrence means it's used in the body, not just the header definition
-      (is (> (count-occurrences output "state-M-dim") 1))
-      (is (> (count-occurrences output "state-X-dim") 1))
-      (is (> (count-occurrences output "state-Y-dim") 1)))))
+      (is (> (count-occurrences output "text-M-dim") 1))
+      (is (> (count-occurrences output "text-X-dim") 1))
+      (is (> (count-occurrences output "text-Y-dim") 1)))))
 
 (deftest scale-tikz-test
   (testing "Scale returns a pgftransformscale LaTeX command"

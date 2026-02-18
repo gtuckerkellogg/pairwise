@@ -69,6 +69,26 @@
     (apply hash-map (interleave [:top :bottom]
                                 (map #(apply str %) (apply map list (partition 2 aln-chars)))))))
 
+(defn- pad-alignment
+  "Pad an alignment with flanking gaps for semi-global/overlap display.
+   path is [start, ..., goal]; start is the high-index (bottom-right) end,
+   goal is the low-index (top-left) end. s1 is top (cols), s2 is bottom (rows)."
+  [aln path s1 s2]
+  (let [goal  (peek path)
+        start (first path)
+        ;; Extract row/col (works for both [r c] and [r c state] nodes)
+        grow (first goal)   gcol (second goal)
+        srow (first start)  scol (second start)
+        n (count s1)  m (count s2)
+        ;; Prefix: residues before the goal cell
+        pre-top    (str (subs s1 0 gcol) (apply str (repeat grow \-)))
+        pre-bottom (str (apply str (repeat gcol \-)) (subs s2 0 grow))
+        ;; Suffix: residues after the start cell
+        suf-top    (str (subs s1 scol n) (apply str (repeat (- m srow) \-)))
+        suf-bottom (str (apply str (repeat (- n scol) \-)) (subs s2 srow m))]
+    {:top    (str pre-top (:top aln) suf-top)
+     :bottom (str pre-bottom (:bottom aln) suf-bottom)}))
+
 (defn pairwise-align
   "Return a pairwise alignment (including all the internals) for two sequences
   provided as strings."
@@ -82,13 +102,17 @@
                             dec
                             range
                             (map + (repeat (count path) (+ 1 last-D-step)))))
-        path-steps (map when-visible paths)]
+        path-steps (map when-visible paths)
+        raw-alns   (map #(path-to-alignment %1 s1 s2) paths)
+        alignments (if (#{:semiglobal :overlap} type)
+                     (map #(pad-alignment %1 %2 s1 s2) raw-alns paths)
+                     raw-alns)]
     {:score          (alignment-score gap-model D type)
      :rows (count (seq s2))
      :cols (count (seq s1))
      :optimal-paths  paths
      :optimal-path-steps path-steps
-     :alignments     (map #(path-to-alignment %1 s1 s2) paths)
+     :alignments     alignments
      :dp-matrix      D
      :sequence-1     s1
      :sequence-2     s2

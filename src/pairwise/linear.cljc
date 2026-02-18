@@ -86,7 +86,13 @@
         candidates [(substitution-score D row col s)
                     (score-horizontal-gap D row col gap-penalty)
                     (score-vertical-gap D row col gap-penalty)
-                    (when (= type :local) {:score 0 :from nil})]
+                    (when (= type :local) {:score 0 :from nil})
+                    ;; Semi-global: free leading gaps on both sequences
+                    (when (and (= type :semiglobal) (or (zero? row) (zero? col)))
+                      {:score 0 :from nil})
+                    ;; Overlap: free leading gaps on s1 only (row 0)
+                    (when (and (= type :overlap) (zero? row))
+                      {:score 0 :from nil})]
         {:keys [max-score sources]} (select-best-scores candidates type)
         directions (map :direction sources)]
     (assoc-in D [row col]
@@ -107,20 +113,40 @@
 
 (defmethod alignment/alignment-score :linear
   [_gap-model D type]
-  (cond (= type :global) (get-in D [(dec (count D))
-                                    (dec (count (first D))) :score])
-        (= type :local) (apply max (flatten (map #(map :score %) D)))))
+  (let [nrows (count D)
+        ncols (count (first D))
+        last-row (dec nrows)
+        last-col (dec ncols)]
+    (case type
+      :global (get-in D [last-row last-col :score])
+      :local  (apply max (flatten (map #(map :score %) D)))
+      :semiglobal (apply max (concat
+                              (map #(get-in D [last-row % :score]) (range ncols))
+                              (map #(get-in D [% last-col :score]) (range nrows))))
+      :overlap (apply max (map #(get-in D [% last-col :score]) (range nrows))))))
 
 (defmethod alignment/get-starting :linear
   [_gap-model D type]
-  (cond (= type :global) (list [(dec (count D))
-                                (dec (count (first D)))])
-        (= type :local)  (let [top-score (apply max (flatten (map #(map :score %) D)))
-                               starting  (for [r (range (count D))
-                                               c (range (count (first D)))]
-                                           (when (= top-score (get-in D [r c :score]))
-                                             [r c]))]
-                           (remove nil? starting))))
+  (let [nrows (count D)
+        ncols (count (first D))
+        last-row (dec nrows)
+        last-col (dec ncols)]
+    (case type
+      :global (list [last-row last-col])
+      :local  (let [top-score (apply max (flatten (map #(map :score %) D)))
+                    starting  (for [r (range nrows)
+                                    c (range ncols)]
+                                (when (= top-score (get-in D [r c :score]))
+                                  [r c]))]
+                (remove nil? starting))
+      :semiglobal (let [top-score (alignment/alignment-score :linear D type)
+                        edge-cells (distinct (concat
+                                              (for [c (range ncols)] [last-row c])
+                                              (for [r (range nrows)] [r last-col])))]
+                    (filter #(= top-score (get-in D (conj % :score))) edge-cells))
+      :overlap (let [top-score (alignment/alignment-score :linear D type)
+                     col-cells (for [r (range nrows)] [r last-col])]
+                 (filter #(= top-score (get-in D (conj % :score))) col-cells)))))
 
 (defmethod alignment/graph-of :linear
   [_gap-model D]
@@ -132,12 +158,13 @@
 (defmethod alignment/get-goalfn :linear
   [gap-model D type]
   (let [goal (set
-              (cond (= type :global)
-                    '([0 0])
-                    (= type :local)
-                    (keys (filter #(zero? (:score (second %))) (alignment/graph-of gap-model D)))
-                    (= type :semiglobal)
-                    (filter #(or (zero? (first %)) (zero? (second %))) (keys (alignment/graph-of gap-model D)))))]
+              (case type
+                :global     '([0 0])
+                :local      (keys (filter #(zero? (:score (second %))) (alignment/graph-of gap-model D)))
+                :semiglobal (filter #(or (zero? (first %)) (zero? (second %)))
+                                    (keys (alignment/graph-of gap-model D)))
+                :overlap    (filter #(zero? (first %))
+                                    (keys (alignment/graph-of gap-model D)))))]
     #(contains? goal %)))
 
 ;; ---------------------------------------------------------------------------

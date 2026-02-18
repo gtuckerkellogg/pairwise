@@ -29,8 +29,20 @@
 
 (deftest rejects-invalid-type
   (testing "Invalid alignment type produces an error"
-    (let [{:keys [errors]} (parse-opts ["-t" "semiglobal"] cli-options)]
+    (let [{:keys [errors]} (parse-opts ["-t" "bogus"] cli-options)]
       (is (seq errors)))))
+
+(deftest accepts-semiglobal-type
+  (testing "semiglobal is accepted as a valid alignment type"
+    (let [{:keys [options errors]} (parse-opts ["-t" "semiglobal"] cli-options)]
+      (is (nil? errors))
+      (is (= :semiglobal (:type options))))))
+
+(deftest accepts-overlap-type
+  (testing "overlap is accepted as a valid alignment type"
+    (let [{:keys [options errors]} (parse-opts ["-t" "overlap"] cli-options)]
+      (is (nil? errors))
+      (is (= :overlap (:type options))))))
 
 (deftest parses-numeric-options
   (testing "Numeric options are parsed as numbers"
@@ -47,33 +59,59 @@
       (is (= -2 (:mismatch options)))
       (is (= 2 (:gap-penalty options)))
       (is (= :global (:type options)))
+      (is (= :protein (:seq-type options)))
       (is (nil? (:s1 options)))
       (is (nil? (:s2 options)))
       (is (nil? (:output options))))))
 
+;; --- Sequence type parsing ---
+
+(deftest parses-seq-type
+  (testing "--seq-type dna is accepted"
+    (let [{:keys [options errors]} (parse-opts ["--seq-type" "dna"] cli-options)]
+      (is (nil? errors))
+      (is (= :dna (:seq-type options)))))
+  (testing "--seq-type protein is accepted"
+    (let [{:keys [options errors]} (parse-opts ["--seq-type" "protein"] cli-options)]
+      (is (nil? errors))
+      (is (= :protein (:seq-type options)))))
+  (testing "-s shorthand works"
+    (let [{:keys [options errors]} (parse-opts ["-s" "dna"] cli-options)]
+      (is (nil? errors))
+      (is (= :dna (:seq-type options)))))
+  (testing "Invalid seq-type is rejected"
+    (let [{:keys [errors]} (parse-opts ["--seq-type" "bogus"] cli-options)]
+      (is (seq errors)))))
+
 ;; --- Scoring matrix loading ---
 
 (deftest loads-simple-matrix
-  (testing "Simple matrix is created from match/mismatch scores"
-    (let [m (load-scoring-matrix "simple" 5 -3)]
+  (testing "Simple protein matrix is created from match/mismatch scores"
+    (let [m (load-scoring-matrix "simple" 5 -3 :protein)]
       (is (map? m))
       (is (= 5 (get m [\A \A])))
-      (is (= -3 (get m [\A \R]))))))
+      (is (= -3 (get m [\A \R])))))
+  (testing "Simple DNA matrix uses 4-letter alphabet"
+    (let [m (load-scoring-matrix "simple" 2 -3 :dna)]
+      (is (map? m))
+      (is (= 2 (get m [\A \A])))
+      (is (= -3 (get m [\A \C])))
+      (is (nil? (get m [\A \R])) "DNA matrix should not contain amino acid keys"))))
 
 (deftest loads-blosum50
   (testing "BLOSUM50 matrix loads from resources"
-    (let [m (load-scoring-matrix "BLOSUM50" nil nil)]
+    (let [m (load-scoring-matrix "BLOSUM50" nil nil :protein)]
       (is (map? m))
       (is (number? (get m [\H \E]))))))
 
 (deftest loads-blosum62
   (testing "BLOSUM62 matrix loads from resources"
-    (let [m (load-scoring-matrix "BLOSUM62" nil nil)]
+    (let [m (load-scoring-matrix "BLOSUM62" nil nil :protein)]
       (is (map? m)))))
 
 (deftest rejects-unknown-matrix
   (testing "Unknown matrix name throws an exception"
-    (is (thrown? Exception (load-scoring-matrix "NONEXISTENT" nil nil)))))
+    (is (thrown? Exception (load-scoring-matrix "NONEXISTENT" nil nil :protein)))))
 
 ;; --- Format alignment ---
 
@@ -95,10 +133,10 @@
     (let [{:keys [options]} (parse-opts ["-1" "SIMILAR" "-2" "SIMMARE"
                                          "--match" "5" "--mismatch" "-5"
                                          "-g" "3"] cli-options)
-          {:keys [s1 s2 matrix match mismatch gap-penalty type]} options
-          s1-clean (sub/sanitise s1)
-          s2-clean (sub/sanitise s2)
-          scoring-matrix (load-scoring-matrix matrix match mismatch)
+          {:keys [s1 s2 matrix match mismatch gap-penalty type seq-type]} options
+          s1-clean (sub/sanitise s1 seq-type)
+          s2-clean (sub/sanitise s2 seq-type)
+          scoring-matrix (load-scoring-matrix matrix match mismatch seq-type)
           result (pairwise/pairwise-align s1-clean s2-clean scoring-matrix gap-penalty :type type)]
       (is (== 14 (:score result)))
       (is (= 2 (count (:alignments result)))))))
@@ -108,10 +146,10 @@
     (let [{:keys [options]} (parse-opts ["-1" "SIMILAR" "-2" "SIMMARE"
                                          "--match" "5" "--mismatch" "-5"
                                          "-g" "3" "-t" "local"] cli-options)
-          {:keys [s1 s2 matrix match mismatch gap-penalty type]} options
-          s1-clean (sub/sanitise s1)
-          s2-clean (sub/sanitise s2)
-          scoring-matrix (load-scoring-matrix matrix match mismatch)
+          {:keys [s1 s2 matrix match mismatch gap-penalty type seq-type]} options
+          s1-clean (sub/sanitise s1 seq-type)
+          s2-clean (sub/sanitise s2 seq-type)
+          scoring-matrix (load-scoring-matrix matrix match mismatch seq-type)
           result (pairwise/pairwise-align s1-clean s2-clean scoring-matrix gap-penalty :type type)]
       (is (pos? (:score result)))
       (is (pos? (count (:alignments result)))))))

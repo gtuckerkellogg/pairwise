@@ -39,4 +39,13 @@
     (is (= "ACXGT" (sanitise "AC1GT")))
     (is (= "ACXGT" (sanitise "AC GT"))))
   (testing "Empty string"
-    (is (= "" (sanitise "")))))
+    (is (= "" (sanitise ""))))
+  (testing "DNA sanitise strips non-ACGT characters"
+    (is (= "ACGT" (sanitise "ACGT" :dna)))
+    (is (= "ACGT" (sanitise "acgt" :dna)))
+    (is (= "ACGT" (sanitise "ANCHGT" :dna)))
+    (is (= "GATTACA" (sanitise "GAT TACA!" :dna)))
+    (is (= "" (sanitise "XYZ" :dna))))
+  (testing "Explicit :protein behaves like 1-arity default"
+    (is (= "ACXGT" (sanitise "AC1GT" :protein)))
+    (is (= "HEAGAWGHEE" (sanitise "HEAGAWGHEE" :protein)))))
