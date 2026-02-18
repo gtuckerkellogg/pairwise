@@ -556,13 +556,15 @@
       "Two classical algorithms solve this problem: "
       [:strong "Needleman-Wunsch"] " (1970) for global alignment (comparing sequences end-to-end) and "
       [:strong "Smith-Waterman"] " (1981) for local alignment (finding the highest-scoring subsequence pair). "
-      "Both can use either a simple " [:strong "linear gap penalty"] " or the more realistic "
+      "Variations include " [:strong "semi-global"] " alignment (fitting one sequence inside another) and "
+      [:strong "overlap"] " alignment (matching a suffix of one sequence to a prefix of another). "
+      "All of these can use either a simple " [:strong "linear gap penalty"] " or the more realistic "
       [:strong "affine gap model"] " (Gotoh, 1982, corrected by Altschul and Erikson 1986), which distinguishes between opening and extending a gap."]
       ]]
   [:div {:class "md:w-1/2"}
     [collapsible "About this tool" false
     [:p {:class "mb-3"}
-      "Students learning about parwise sequence alignment often study visualisations of the dynamic programming "
+      "Students learning about pairwise sequence alignment often study visualisations of the dynamic programming "
       "matrix, but these visualisations are usually static and restricted to a single problem. "
       [:strong "This tool provides interactive visualisations of landmark dynamic programming algorithms "]
       "for pairwise alignment. Students and instructors can change algorithms, scoring systems, and "
@@ -570,10 +572,12 @@
       "dynamic programming matrices used by the underlying algorithm."]
    
     [:p {:class "mb-3"}
-      "This tool supports both global (Needleman-Wunsch) and local (Smith-Waterman) alignment, and either linear or affine gap penalties. "
-      "The affine gap algorithm is that of Altschul and Erickson 1986. Pop-up information is available throughout the "
-      "application.  Currently a range of standard protein substitution matrices are supported, as well as user-defined "
-      "scoring systems that might be preferred for initial classroom exercises."]
+      "This tool supports global (Needleman-Wunsch), local (Smith-Waterman), semi-global, and overlap alignment, "
+      "with either linear or affine gap penalties. "
+      "The affine gap algorithm is that of Altschul and Erickson 1986. "
+      "Both protein and DNA sequences are supported: protein mode offers standard substitution matrices "
+      "(BLOSUM, PAM), while DNA mode uses a simple match/mismatch scheme with a four-letter alphabet. "
+      "Pop-up information is available throughout the application."]
     
     [:p {:class "mb-3"}
      [:strong "Notes for instructors. "]
