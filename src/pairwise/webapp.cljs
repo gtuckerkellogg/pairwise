@@ -286,27 +286,9 @@
   {:match-score 5 :mismatch-score -3
    :gap-penalty 8 :gap-open 12 :gap-extend 2})
 
-(def ^:private alignment-type-defaults
-  "Default scoring parameters per alignment type. Protein types share the same
-   sequences so students can compare algorithm behaviour directly. Overlap
-   switches to DNA with illustrative suffix/prefix sequences."
-  {:global     (merge protein-scoring-defaults
-                      {:scoring-matrix-type :standard :sequence-type :protein
-                       :scoring-matrix :blosum50})
-   :local      (merge protein-scoring-defaults
-                      {:scoring-matrix-type :standard :sequence-type :protein
-                       :scoring-matrix :blosum50})
-   :semiglobal (merge protein-scoring-defaults
-                      {:scoring-matrix-type :standard :sequence-type :protein
-                       :scoring-matrix :blosum50})
-   :overlap    (merge dna-scoring-defaults
-                      {:top-seq "GATTACA" :bottom-seq "TACAGAT"
-                       :scoring-matrix-type :simple :sequence-type :dna})})
-
 (defn- switch-alignment-type! [app-state type-key]
-  (let [defaults (get alignment-type-defaults type-key)]
-    (swap! app-state merge {:alignment-type type-key} defaults)
-    (swap! app-state assoc :result (app-results @app-state))))
+  (swap! app-state assoc :alignment-type type-key)
+  (swap! app-state assoc :result (app-results @app-state)))
 
 (defn- switch-sequence-type! [app-state seq-type]
   (let [current @app-state

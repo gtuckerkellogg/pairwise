@@ -69,7 +69,7 @@ This is a Clojure/ClojureScript library for pairwise sequence comparison using d
 - Mobile responsive: flex layouts stack vertically, toggle buttons wrap, help popups constrained to viewport
 - DNA/protein toggle: switches alphabet, sanitisation, scoring defaults, and gates BLOSUM/PAM availability
 - `switch-sequence-type!` re-sanitises sequences and applies `dna-scoring-defaults` or `protein-scoring-defaults`
-- `switch-alignment-type!` merges `alignment-type-defaults` (scoring params only for protein types; overlap also sets DNA sequences)
+- `switch-alignment-type!` only sets `:alignment-type` and recomputes — never touches sequence type or scoring
 - Real-time alignment computation as parameters change
 
 ### File Structure
@@ -111,5 +111,5 @@ This is a Clojure/ClojureScript library for pairwise sequence comparison using d
 - `sanitise` accepts optional second argument for seq-type (1-arity defaults to `:protein`)
 - Web app: DNA/protein toggle in input panel; switching to DNA hides BLOSUM/PAM (protein-only), auto-switches to simple matrix, re-sanitises sequences, and applies DNA-appropriate scoring defaults (match=2, mismatch=-3, gap=3, gap-open=5, gap-extend=2)
 - CLI: `--seq-type` / `-s` flag (`protein` or `dna`)
-- `alignment-type-defaults` map sets sequence type per alignment type — protein types share sequences so students can compare algorithm behaviour; overlap defaults to DNA
+- Alignment type and sequence type are independent controls — switching alignment type never changes sequence type, sequences, or scoring parameters
 - Maximum sequence length limited to 10 characters in web interface
