@@ -1,6 +1,14 @@
 (ns pairwise.viz-model
   (:require [pairwise.matrix :as matrix]))
 
+(defn- fmt-score
+  "Round a numeric score to at most 1 decimal place.
+   Integers display without a decimal point."
+  [x]
+  (when (some? x)
+    (let [r (/ (Math/round (* (double x) 10)) 10.0)]
+      (if (zero? (rem r 1)) (int r) r))))
+
 (defn- cell-step
   "Compute Beamer overlay step number for a cell at [row col] in a matrix
    with the given number of columns."
@@ -20,7 +28,7 @@
   (for [[r c] (matrix/cell-coordinates D)
         :let [score (get-in D [r c :score])]
         :when (some? score)]
-    {:type :cell-score :row r :col c :score score
+    {:type :cell-score :row r :col c :score (fmt-score score)
      :step (cell-step num-cols [r c])}))
 
 (defn- state-scores
@@ -32,9 +40,9 @@
         :when (contains? cell :vm)]
     {:type :state-scores
      :row r :col c
-     :vm (:vm cell)
-     :vx (:vx cell)
-     :vy (:vy cell)
+     :vm (fmt-score (:vm cell))
+     :vx (fmt-score (:vx cell))
+     :vy (fmt-score (:vy cell))
      :step (cell-step num-cols [r c])}))
 
 (defn- dp-arrows

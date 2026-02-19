@@ -470,7 +470,8 @@
                      :semiglobal "Semi-global")]
     [:span type-label " "
      (case sequence-type :dna "DNA" "protein") " alignment score: "
-     [:strong (:score result)]]))
+     [:strong (let [s (:score result)]
+                 (if (== s (Math/floor s)) (int s) (.toFixed s 1)))]]))
 
 (defn color-legend [affine?]
   (let [labels (if affine?
