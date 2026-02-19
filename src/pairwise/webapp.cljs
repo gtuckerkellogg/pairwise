@@ -272,6 +272,27 @@
    [:div {:class "sm:w-1/3 text-sm font-medium text-gray-700"} [:label label]]
    [:div {:class "sm:w-2/3"} input]])
 
+(defn- gap-stops
+  "Build a non-uniform stop vector: 0, 0.1, 0.5, then integers 1..max-int."
+  [max-int]
+  (vec (concat [0 0.1 0.5] (range 1 (inc max-int)))))
+
+(def ^:private linear-gap-stops (gap-stops 15))
+(def ^:private gap-open-stops   (gap-stops 20))
+
+(defn- value->index
+  "Find the index of the closest stop to value."
+  [stops value]
+  (let [diffs (map-indexed (fn [i v] [i (Math/abs (- v value))]) stops)]
+    (first (apply min-key second diffs))))
+
+(defn- gap-slider
+  "Render a range slider backed by a non-uniform stop vector."
+  [stops value on-change]
+  [:input {:class "w-full" :type "range" :min 0 :max (dec (count stops)) :step 1
+           :value (value->index stops value)
+           :on-change #(on-change (nth stops (js/parseInt (-> % .-target .-value))))}])
+
 (defn update-state! [app-state key value]
   (swap! app-state assoc key value)
   (when (= key :gap-open)
@@ -441,20 +462,15 @@
           [:div {:class "mb-1"}
            [help-toggle "Larger d (gap open) relative to e (gap extend) discourages opening new gaps but tolerates longer ones. Try adjusting these to see how the optimal path changes."]]
           (row [:label "Gap open (d): " (:gap-open state)]
-               [:input {:class "w-full" :type "range" :min 0.1 :max 20 :step 0.1
-                        :value (:gap-open state)
-                        :on-change #(update-state! app-state :gap-open
-                                                   (js/parseFloat (-> % .-target .-value)))}])
-          (row [:label "Gap extend (e): " (:gap-extend state)]
-               [:input {:class "w-full" :type "range" :min 0 :max (:gap-open state) :step 0.1
-                        :value (:gap-extend state)
-                        :on-change #(update-state! app-state :gap-extend
-                                                   (js/parseFloat (-> % .-target .-value)))}])]
+               [gap-slider gap-open-stops (:gap-open state)
+                #(update-state! app-state :gap-open %)])
+          (let [extend-stops (vec (take-while #(<= % (:gap-open state)) linear-gap-stops))]
+            (row [:label "Gap extend (e): " (:gap-extend state)]
+                 [gap-slider extend-stops (:gap-extend state)
+                  #(update-state! app-state :gap-extend %)]))]
          (row [:label "Linear gap penalty: " (:gap-penalty state)]
-              [:input {:class "w-full" :type "range" :min 0.1 :max 15 :step 0.1
-                       :value (:gap-penalty state)
-                       :on-change #(update-state! app-state :gap-penalty
-                                                  (js/parseFloat (-> % .-target .-value)))}]))]]]))
+              [gap-slider linear-gap-stops (:gap-penalty state)
+               #(update-state! app-state :gap-penalty %)]))]]]))
 
 (defn display-alignment [{:keys [top bottom description]}]
   ^{:key (swap! app-item-id inc)}
