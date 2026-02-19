@@ -28,7 +28,7 @@ This is a Clojure/ClojureScript library for pairwise sequence comparison using d
 - This builds the uber JAR, copies it to `~/bin/pairwise.jar`, and creates a `~/bin/pairwise` wrapper script
 - After install: `pairwise -1 HEAGAWGHEE -2 PAWHEAE -m BLOSUM50 -g 8`
 - Affine gap example: `pairwise -1 HEAGAWGHEE -2 PAWHEAE -m BLOSUM50 --gap-model affine --gap-open 12 --gap-extend 2`
-- DNA overlap example: `pairwise -1 GATTACA -2 TACAGAT -s dna -t overlap --match 2 --mismatch -3 -g 3`
+- DNA semi-global example: `pairwise -1 GATTACA -2 TACAGAT -s dna -t semiglobal --match 2 --mismatch -3 -g 3`
 
 ### Shadow-CLJS Development
 - Development server runs at `http://localhost:3000`
@@ -70,6 +70,7 @@ This is a Clojure/ClojureScript library for pairwise sequence comparison using d
 - DNA/protein toggle: switches alphabet, sanitisation, scoring defaults, and gates BLOSUM/PAM availability
 - `switch-sequence-type!` re-sanitises sequences and applies `dna-scoring-defaults` or `protein-scoring-defaults`
 - `switch-alignment-type!` only sets `:alignment-type` and recomputes — never touches sequence type or scoring
+- Semi-global alignments carry `:pattern` and `:description` keys (from `classify-alignment`) on each alignment map; these are displayed beneath each alignment in the results panel
 - Real-time alignment computation as parameters change
 
 ### File Structure
@@ -98,8 +99,7 @@ This is a Clojure/ClojureScript library for pairwise sequence comparison using d
 ### Alignment Types
 - `:global`: Needleman-Wunsch algorithm for global alignment
 - `:local`: Smith-Waterman algorithm for local alignment
-- `:semiglobal`: All four matrix edges free (row 0, col 0 initialised to 0; traceback starts from last row or last column, ends at row 0 or col 0) — fits one sequence inside another
-- `:overlap`: Suffix-of-s1 / prefix-of-s2 overlap (row 0 free, col 0 penalised; traceback starts from last column, ends at row 0)
+- `:semiglobal`: All four matrix edges free (row 0, col 0 initialised to 0; traceback starts from last row or last column, ends at row 0 or col 0). The result is annotated via `classify-alignment` to describe the structural relationship (containment, suffix–prefix overlap, etc.) — there is no separate `:overlap` type
 
 ### Gap Models
 - `:linear`: Gap of length k costs k*d (single penalty parameter)

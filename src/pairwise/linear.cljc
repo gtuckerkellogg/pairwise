@@ -90,9 +90,7 @@
                     ;; Semi-global: free leading gaps on both sequences
                     (when (and (= type :semiglobal) (or (zero? row) (zero? col)))
                       {:score 0 :from nil})
-                    ;; Overlap: free leading gaps on s1 only (row 0)
-                    (when (and (= type :overlap) (zero? row))
-                      {:score 0 :from nil})]
+]
         {:keys [max-score sources]} (select-best-scores candidates type)
         directions (map :direction sources)]
     (assoc-in D [row col]
@@ -123,7 +121,7 @@
       :semiglobal (apply max (concat
                               (map #(get-in D [last-row % :score]) (range ncols))
                               (map #(get-in D [% last-col :score]) (range nrows))))
-      :overlap (apply max (map #(get-in D [% last-col :score]) (range nrows))))))
+)))
 
 (defmethod alignment/get-starting :linear
   [_gap-model D type]
@@ -144,9 +142,7 @@
                                               (for [c (range ncols)] [last-row c])
                                               (for [r (range nrows)] [r last-col])))]
                     (filter #(= top-score (get-in D (conj % :score))) edge-cells))
-      :overlap (let [top-score (alignment/alignment-score :linear D type)
-                     col-cells (for [r (range nrows)] [r last-col])]
-                 (filter #(= top-score (get-in D (conj % :score))) col-cells)))))
+)))
 
 (defmethod alignment/graph-of :linear
   [_gap-model D]
@@ -163,8 +159,7 @@
                 :local      (keys (filter #(zero? (:score (second %))) (alignment/graph-of gap-model D)))
                 :semiglobal (filter #(or (zero? (first %)) (zero? (second %)))
                                     (keys (alignment/graph-of gap-model D)))
-                :overlap    (filter #(zero? (first %))
-                                    (keys (alignment/graph-of gap-model D)))))]
+))]
     #(contains? goal %)))
 
 ;; ---------------------------------------------------------------------------

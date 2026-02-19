@@ -69,11 +69,11 @@
 (defn- score-vy
   "V'Y recurrence: horizontal gap (gap in s2).
    V'Y[i,j] = max(V'M[i,j-1] - d, V'Y[i,j-1] - e)
-   Semi-global/overlap: free leading gaps in s1 via V'Y on row 0."
+   Semi-global: free leading gaps in s1 via V'Y on row 0."
   [D row col {:keys [d e]} type]
   (if (zero? col)
     nil
-    (if (and (#{:semiglobal :overlap} type) (zero? row))
+    (if (and (= type :semiglobal) (zero? row))
       ;; Free leading horizontal gaps on row 0
       {:score 0 :sources [nil]}
       (let [prev     (get-in D [row (dec col)])
@@ -184,9 +184,7 @@
                           (map #(cell-max (get-in D [last-row %])) (range ncols))
                           (map #(cell-max (get-in D [% last-col])) (range nrows)))))
 
-      :overlap
-      (apply max (filter some?
-                         (map #(cell-max (get-in D [% last-col])) (range nrows)))))))
+)))
 
 (defn- best-state-at
   "Return the state keyword(s) with the highest score at a cell."
@@ -228,14 +226,7 @@
               :when (= top-score (get cell ({:M :vm :X :vx :Y :vy} state)))]
           [r c state]))
 
-      :overlap
-      (let [top-score (alignment/alignment-score :affine D type)]
-        (for [r (range nrows)
-              :let [cell (get-in D [r last-col])]
-              :when (some? (:score cell))
-              state (best-state-at cell)
-              :when (= top-score (get cell ({:M :vm :X :vx :Y :vy} state)))]
-          [r last-col state])))))
+)))
 
 (defmethod alignment/get-goalfn :affine
   [gap-model D type]
@@ -254,8 +245,7 @@
     :semiglobal
     (fn [node] (or (zero? (first node)) (zero? (second node))))
 
-    :overlap
-    (fn [node] (zero? (first node)))))
+))
 
 (defmethod alignment/graph-of :affine
   [_gap-model D]

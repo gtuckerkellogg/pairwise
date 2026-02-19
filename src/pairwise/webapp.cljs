@@ -355,13 +355,12 @@
       [:div {:class "bg-nus-slate text-white px-4 py-2 text-sm font-semibold rounded-t-lg"}
        "Alignment type"
        [help-toggle
-        "Global (Needleman-Wunsch): best end-to-end alignment of both complete sequences. Local (Smith-Waterman): highest-scoring subsequence pair(s). Semi-global: fits one sequence inside another (all edges free). Overlap: finds where a suffix of sequence 1 matches a prefix of sequence 2 (row 0 free, last column scanned). When multiple paths achieve the same optimal score, all optimal alignments are reported."]]
+        "Global (Needleman-Wunsch): best end-to-end alignment of both complete sequences. Local (Smith-Waterman): highest-scoring subsequence pair(s). Semi-global: one sequence may be offset or contained within the other — all four edges are free. The resulting alignment is automatically annotated to describe the structural relationship between the sequences. When multiple paths achieve the same optimal score, all optimal alignments are reported."]]
       [:div {:class "px-4 py-3"}
        [:div {:class "inline-flex flex-wrap rounded-md shadow-sm overflow-hidden"}
         (for [[type-key label] [[:global "Global (NW)"]
                                 [:local "Local (SW)"]
-                                [:semiglobal "Semi-global"]
-                                [:overlap "Overlap"]]]
+                                [:semiglobal "Semi-global"]]]
           ^{:key type-key}
           (toggle-btn label (= type-key (:alignment-type state))
                       #(switch-alignment-type! app-state type-key)))]]]
@@ -455,16 +454,18 @@
                        :on-change #(update-state! app-state :gap-penalty
                                                   (js/parseInt (-> % .-target .-value)))}]))]]]))
 
-(defn display-alignment [{:keys [top bottom]}]
+(defn display-alignment [{:keys [top bottom description]}]
   ^{:key (swap! app-item-id inc)}
-  [:p {:class "font-mono text-sm"} top [:br] bottom [:br] [:br]])
+  [:div {:class "mb-3"}
+   [:p {:class "font-mono text-sm mb-0"} top [:br] bottom]
+   (when description
+     [:p {:class "text-xs text-gray-500 italic mt-1"} description])])
 
 (defn summarize-alignment [{:keys [sequence-type alignment-type result]}]
   (let [type-label (case alignment-type
                      :global "Global"
                      :local "Local"
-                     :semiglobal "Semi-global"
-                     :overlap "Overlap")]
+                     :semiglobal "Semi-global")]
     [:span type-label " "
      (case sequence-type :dna "DNA" "protein") " alignment score: "
      [:strong (:score result)]]))
@@ -525,7 +526,7 @@
       "Pairwise alignment is the foundation of database search tools like "
       "BLAST and FASTA, multiple sequence alignment, high throughput sequencing analysis, "
       "and phylogenetic analysis."]
-      [:p {:class "mb-3"}
+     [:p {:class "mb-3"}
       "Pairwise alignment compares two biological sequences to identify regions of similarity. "
       "Using dynamic programming, we fill a scoring matrix where each cell represents the best "
       "alignment score up to that point. The optimal alignment(s) are found by tracing back "
@@ -534,15 +535,17 @@
       "The dynamic programming approach guarantees finding the mathematically optimal "
       "alignment(s) given a scoring scheme, unlike heuristic methods that trade optimality "
       "for speed."]
-      [:p {:class "mb-3"}
+     [:p {:class "mb-3"}
       "Two classical algorithms solve this problem: "
       [:strong "Needleman-Wunsch"] " (1970) for global alignment (comparing sequences end-to-end) and "
       [:strong "Smith-Waterman"] " (1981) for local alignment (finding the highest-scoring subsequence pair). "
-      "Variations include " [:strong "semi-global"] " alignment (fitting one sequence inside another) and "
-      [:strong "overlap"] " alignment (matching a suffix of one sequence to a prefix of another). "
-      "All of these can use either a simple " [:strong "linear gap penalty"] " or the more realistic "
-      [:strong "affine gap model"] " (Gotoh, 1982, corrected by Altschul and Erikson 1986), which distinguishes between opening and extending a gap."]
-      ]]
+      "A third variation, " [:strong "semi-global"] " alignment, leaves all four matrix edges free, "
+      "making it suitable for comparing sequences of different lengths without penalising offsets at either end. " 
+      "In practice, many Needleman-Wunsch implementations on the web (such as EMBOSS Needle) actually perform "
+      "semi-global alignment.  All three algorithms can use either a simple " [:strong "linear gap penalty"] 
+      " or the more realistic " [:strong "affine gap model"] " (Gotoh, 1982, corrected by Altschul and Erikson 1986), " 
+      "which distinguishes between opening and extending a gap."]
+     ]]
   [:div {:class "md:w-1/2"}
     [collapsible "About this tool" false
     [:p {:class "mb-3"}
@@ -554,8 +557,10 @@
       "dynamic programming matrices used by the underlying algorithm."]
    
     [:p {:class "mb-3"}
-      "This tool supports global (Needleman-Wunsch), local (Smith-Waterman), semi-global, and overlap alignment, "
+      "This tool supports global (Needleman-Wunsch), local (Smith-Waterman), and semi-global alignment, "
       "with either linear or affine gap penalties. "
+      "Semi-global alignments are automatically annotated to describe the structural relationship "
+      "between the two sequences (containment, suffix\u2013prefix overlap, etc.). "
       "The affine gap algorithm is that of Altschul and Erickson 1986. "
       "Both protein and DNA sequences are supported: protein mode offers standard substitution matrices "
       "(BLOSUM, PAM), while DNA mode uses a simple match/mismatch scheme with a four-letter alphabet. "
@@ -573,7 +578,7 @@
       "their own Beamer presentations."    
     ]
     [:p {:class "italic text-gray-500"}
-      "The default sequences (HEAGAWGHEE / PAWHEAE) and BLOSUM50 matrix reproduce the example "
+      "The default sequences (HEAGAWGHEE / PAWHEAE) and BLOSUM50 matrix reproduce the examples "
       "from Durbin et al. (1998), Ch. 2."]]]
 ])
 
@@ -626,29 +631,25 @@
       (case atype
         :global "The Needleman-Wunsch algorithm fills the entire matrix to find the best global alignment. Each cell F(i,j) represents the optimal score for aligning the first i residues of one sequence with the first j residues of the other."
         :local "The Smith-Waterman algorithm modifies the global recurrence by adding zero as an option \u2014 allowing alignments to start anywhere. Traceback begins at the highest-scoring cell(s) and stops when a zero is reached."
-        :semiglobal "Semi-global alignment uses the same recurrence as Needleman-Wunsch but with free leading and trailing gaps on both sequences. This is useful for fitting a short sequence inside a longer one. Traceback starts from the best cell on the last row or last column and ends at row 0 or column 0."
-        :overlap "Overlap alignment finds the best suffix-of-sequence-1 / prefix-of-sequence-2 match. Row 0 is free (sequence 1 prefix can be skipped), but column 0 is penalised (sequence 2 must start from the beginning). Traceback starts from the best cell on the last column and ends at row 0.")]
+        :semiglobal "Semi-global alignment uses the same recurrence as Needleman-Wunsch but initialises all of row 0 and column 0 to zero (free leading gaps on both sequences). Traceback starts from the best cell on the last row or last column and ends at row 0 or column 0. The resulting alignment is annotated to describe the structural relationship between the two sequences (e.g., one contained within the other, or a suffix\u2013prefix overlap).")]
      [:div {:class "mt-3"}
       [:p {:class "mb-2 text-sm font-semibold text-gray-600"} "Initialisation:"]
       [recurrence-block
        (case atype
          :global     "F(i, 0) = -i \\times d \\qquad F(0, j) = -j \\times d"
          :local      "F(i, 0) = 0 \\qquad F(0, j) = 0"
-         :semiglobal "F(i, 0) = 0 \\qquad F(0, j) = 0"
-         :overlap    "F(i, 0) = -i \\times d \\qquad F(0, j) = 0")]
+         :semiglobal "F(i, 0) = 0 \\qquad F(0, j) = 0")]
       [:p {:class "mb-2 text-sm font-semibold text-gray-600"} "Recurrence:"]
       [recurrence-block
        (case atype
          :local "F(i,j) = \\max \\begin{cases} 0 \\\\ F(i-1, j-1) + s(x_i, y_j) \\\\ F(i-1, j) - d \\\\ F(i, j-1) - d \\end{cases}"
-         ;; Global, semi-global, and overlap share the same recurrence
+         ;; Global and semi-global share the same recurrence
          "F(i,j) = \\max \\begin{cases} F(i-1, j-1) + s(x_i, y_j) \\\\ F(i-1, j) - d \\\\ F(i, j-1) - d \\end{cases}")]
-      (when (#{:semiglobal :overlap} atype)
+      (when (= :semiglobal atype)
         [:div
          [:p {:class "mb-2 text-sm font-semibold text-gray-600"} "Traceback:"]
          [recurrence-block
-          (case atype
-            :semiglobal "\\text{Start: } \\max\\bigl(F(m, 0{:}n),\\; F(0{:}m, n)\\bigr) \\qquad \\text{Goal: row } 0 \\text{ or col } 0"
-            :overlap    "\\text{Start: } \\max\\bigl(F(0{:}m, n)\\bigr) \\qquad \\text{Goal: row } 0")]])]]))
+          "\\text{Start: } \\max\\bigl(F(m, 0{:}n),\\; F(0{:}m, n)\\bigr) \\qquad \\text{Goal: row } 0 \\text{ or col } 0"]])]]))
 
 (defn- affine-recurrence-vm
   "V'M recurrence block."
@@ -701,7 +702,7 @@
   (let [active (or (:active-state @app-state) :all)
         atype (:alignment-type @app-state)
         local? (= atype :local)
-        ;; For recurrence display, semi-global and overlap use the global recurrence (no zero-floor)
+        ;; For recurrence display, semi-global uses the global recurrence (no zero-floor)
         use-global-recurrence? (not local?)
         highlight? (fn [state]
                      (or (= active :all) (= active state)))]
@@ -717,7 +718,6 @@
              (case atype
                :local "For local alignment, each state also includes 0 as an option, allowing alignments to begin anywhere. "
                :semiglobal "For semi-global alignment, leading gaps on both edges are free (V\u2032X on col 0 and V\u2032Y on row 0 are initialised to 0). "
-               :overlap "For overlap alignment, leading gaps in sequence 1 are free (V\u2032Y on row 0 is initialised to 0), but column 0 is penalised. "
                "")
              "The gap opening penalty d is applied when transitioning from M to a gap state, "
              "while the extension penalty e is applied when continuing in a gap state."))]

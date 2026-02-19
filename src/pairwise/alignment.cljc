@@ -69,8 +69,55 @@
     (apply hash-map (interleave [:top :bottom]
                                 (map #(apply str %) (apply map list (partition 2 aln-chars)))))))
 
+(defn classify-alignment
+  "Classify the structural pattern of a padded semi-global alignment.
+  Examines leading and trailing gap characters in each strand to determine
+  how the two sequences relate to each other.
+  Returns a map with :pattern (keyword) and :description (string)."
+  [{:keys [top bottom]}]
+  (let [leading-gaps  (fn [s] (count (take-while #(= % \-) s)))
+        trailing-gaps (fn [s] (count (take-while #(= % \-) (reverse s))))
+        lt (leading-gaps top)   tt (trailing-gaps top)
+        lb (leading-gaps bottom) tb (trailing-gaps bottom)]
+    (cond
+      (and (zero? lt) (zero? tt) (zero? lb) (zero? tb))
+      {:pattern :complete
+       :description "Both sequences are fully aligned end-to-end."}
+
+      (and (pos? lb) (pos? tt))
+      {:pattern :overlap-s1-s2
+       :description "Suffix of sequence 1 overlaps with prefix of sequence 2."}
+
+      (and (pos? lt) (pos? tb))
+      {:pattern :overlap-s2-s1
+       :description "Suffix of sequence 2 overlaps with prefix of sequence 1."}
+
+      (and (pos? lb) (pos? tb))
+      {:pattern :s2-in-s1
+       :description "Sequence 2 is contained within sequence 1."}
+
+      (and (pos? lt) (pos? tt))
+      {:pattern :s1-in-s2
+       :description "Sequence 1 is contained within sequence 2."}
+
+      (pos? lb)
+      {:pattern :s2-flush-right
+       :description "Sequence 2 is aligned against the right end of sequence 1."}
+
+      (pos? lt)
+      {:pattern :s1-flush-right
+       :description "Sequence 1 is aligned against the right end of sequence 2."}
+
+      (pos? tt)
+      {:pattern :s2-extends-right
+       :description "Sequence 1 is fully aligned; sequence 2 has an unmatched suffix."}
+
+      (pos? tb)
+      {:pattern :s1-extends-right
+       :description "Sequence 2 is fully aligned; sequence 1 has an unmatched suffix."})))
+
 (defn- pad-alignment
-  "Pad an alignment with flanking gaps for semi-global/overlap display.
+  "Pad an alignment with flanking gaps for semi-global display.
    path is [start, ..., goal]; start is the high-index (bottom-right) end,
    goal is the low-index (top-left) end. s1 is top (cols), s2 is bottom (rows)."
   [aln path s1 s2]
@@ -104,9 +151,13 @@
                             (map + (repeat (count path) (+ 1 last-D-step)))))
         path-steps (map when-visible paths)
         raw-alns   (map #(path-to-alignment %1 s1 s2) paths)
-        alignments (if (#{:semiglobal :overlap} type)
+        padded?    (= type :semiglobal)
+        padded     (if padded?
                      (map #(pad-alignment %1 %2 s1 s2) raw-alns paths)
-                     raw-alns)]
+                     raw-alns)
+        alignments (if padded?
+                     (map #(merge % (classify-alignment %)) padded)
+                     padded)]
     {:score          (alignment-score gap-model D type)
      :rows (count (seq s2))
      :cols (count (seq s1))

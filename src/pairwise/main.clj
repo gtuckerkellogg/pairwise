@@ -43,10 +43,10 @@
     :default 1
     :parse-fn #(Double/parseDouble %)
     :id :gap-extend]
-   ["-t" "--type TYPE" "Alignment type: global, local, semiglobal, or overlap"
+   ["-t" "--type TYPE" "Alignment type: global, local, or semiglobal"
     :default :global
     :parse-fn keyword
-    :validate [#(contains? #{:global :local :semiglobal :overlap} %) "Must be 'global', 'local', 'semiglobal', or 'overlap'"]
+    :validate [#(contains? #{:global :local :semiglobal} %) "Must be 'global', 'local', or 'semiglobal'"]
     :id :type]
    ["-s" "--seq-type TYPE" "Sequence type: protein or dna"
     :default :protein
@@ -80,7 +80,9 @@
                     (fn [idx aln]
                       (str "Alignment " (inc idx) ":\n"
                            "Seq1: " (:top aln) "\n"
-                           "Seq2: " (:bottom aln)))
+                           "Seq2: " (:bottom aln)
+                           (when (:description aln)
+                             (str "\n[" (:description aln) "]"))))
                     alignments)))))
 
 (defn -main [& args]
@@ -102,8 +104,8 @@
         (println "  # Affine gap alignment with BLOSUM50")
         (println "  pairwise -1 HEAGAWGHEE -2 PAWHEAE -m BLOSUM50 --gap-model affine --gap-open 12 --gap-extend 2")
         (println)
-        (println "  # DNA overlap alignment")
-        (println "  pairwise -1 GATTACA -2 TACAGAT -s dna -t overlap --match 2 --mismatch -3 -g 3")
+        (println "  # DNA semi-global alignment (annotated with structural relationship)")
+        (println "  pairwise -1 GATTACA -2 TACAGAT -s dna -t semiglobal --match 2 --mismatch -3 -g 3")
         (println)
         (println "  # Generate TikZ/LaTeX visualization")
         (println "  pairwise -1 ACGT -2 ACGT -o alignment.tex")
