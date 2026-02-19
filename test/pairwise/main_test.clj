@@ -38,11 +38,10 @@
       (is (nil? errors))
       (is (= :semiglobal (:type options))))))
 
-(deftest accepts-overlap-type
-  (testing "overlap is accepted as a valid alignment type"
-    (let [{:keys [options errors]} (parse-opts ["-t" "overlap"] cli-options)]
-      (is (nil? errors))
-      (is (= :overlap (:type options))))))
+(deftest rejects-overlap-type
+  (testing "overlap is no longer accepted (use semiglobal instead)"
+    (let [{:keys [errors]} (parse-opts ["-t" "overlap"] cli-options)]
+      (is (some? errors)))))
 
 (deftest parses-numeric-options
   (testing "Numeric options are parsed as numbers"

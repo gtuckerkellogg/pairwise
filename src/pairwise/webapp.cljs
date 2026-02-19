@@ -274,6 +274,8 @@
 
 (defn update-state! [app-state key value]
   (swap! app-state assoc key value)
+  (when (= key :gap-open)
+    (swap! app-state update :gap-extend min value))
   (swap! app-state assoc :result (app-results @app-state)))
 
 (def ^:private dna-scoring-defaults
@@ -439,20 +441,20 @@
           [:div {:class "mb-1"}
            [help-toggle "Larger d (gap open) relative to e (gap extend) discourages opening new gaps but tolerates longer ones. Try adjusting these to see how the optimal path changes."]]
           (row [:label "Gap open (d): " (:gap-open state)]
-               [:input {:class "w-full" :type "range" :min 1 :max 20
+               [:input {:class "w-full" :type "range" :min 0.1 :max 20 :step 0.1
                         :value (:gap-open state)
                         :on-change #(update-state! app-state :gap-open
-                                                   (js/parseInt (-> % .-target .-value)))}])
+                                                   (js/parseFloat (-> % .-target .-value)))}])
           (row [:label "Gap extend (e): " (:gap-extend state)]
-               [:input {:class "w-full" :type "range" :min 1 :max 10
+               [:input {:class "w-full" :type "range" :min 0 :max (:gap-open state) :step 0.1
                         :value (:gap-extend state)
                         :on-change #(update-state! app-state :gap-extend
-                                                   (js/parseInt (-> % .-target .-value)))}])]
+                                                   (js/parseFloat (-> % .-target .-value)))}])]
          (row [:label "Linear gap penalty: " (:gap-penalty state)]
-              [:input {:class "w-full" :type "range" :min 0 :max 15
+              [:input {:class "w-full" :type "range" :min 0.1 :max 15 :step 0.1
                        :value (:gap-penalty state)
                        :on-change #(update-state! app-state :gap-penalty
-                                                  (js/parseInt (-> % .-target .-value)))}]))]]]))
+                                                  (js/parseFloat (-> % .-target .-value)))}]))]]]))
 
 (defn display-alignment [{:keys [top bottom description]}]
   ^{:key (swap! app-item-id inc)}

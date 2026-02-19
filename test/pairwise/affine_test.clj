@@ -174,32 +174,30 @@
 ;; Overlap alignment tests (affine)
 ;; ---------------------------------------------------------------------------
 
-(deftest overlap-affine-row0-free
-  (testing "Overlap affine: row 0 has vy scores of 0 (free leading horizontal gaps)"
+(deftest semiglobal-affine-row0-free
+  (testing "Semi-global affine: row 0 has vy scores of 0 (free leading horizontal gaps)"
     (let [S (sub/simple-substitution-matrix :dna :same 1 :different -1)
           D (alignment/build-dp-matrix :affine S {:d 5 :e 1}
-              "GATTACA" "TACAGAT" :type :overlap)]
-      ;; Row 0: vy should be 0 for all cols > 0 (free leading gaps in s1)
+              "GATTACA" "TACAGAT" :type :semiglobal)]
+      ;; Row 0: vy should be 0 for all cols > 0 (free leading gaps)
       (doseq [c (range 1 (inc (count "GATTACA")))]
         (is (zero? (get-in D [0 c :vy]))
             (str "Row 0, col " c " vy should be 0"))))))
 
-(deftest overlap-affine-col0-penalised
-  (testing "Overlap affine: col 0 has no free vx (s2 start penalised)"
+(deftest semiglobal-affine-col0-free
+  (testing "Semi-global affine: col 0 has free vx (both edges free)"
     (let [S (sub/simple-substitution-matrix :dna :same 1 :different -1)
           D (alignment/build-dp-matrix :affine S {:d 5 :e 1}
-              "GATTACA" "TACAGAT" :type :overlap)]
-      ;; Col 0: vx should be nil or negative for rows > 0 (no free vertical gaps)
-      ;; Actually vx on col 0 should be nil because there's no free edge for overlap there
+              "GATTACA" "TACAGAT" :type :semiglobal)]
+      ;; Col 0: vx should be 0 for all rows > 0 (free leading gaps)
       (doseq [r (range 1 (inc (count "TACAGAT")))]
-        (let [vx (get-in D [r 0 :vx])]
-          (is (or (nil? vx) (neg? vx))
-              (str "Row " r ", col 0 vx should not be zero/positive")))))))
+        (is (zero? (get-in D [r 0 :vx]))
+            (str "Row " r ", col 0 vx should be 0"))))))
 
-(deftest overlap-affine-finds-suffix-prefix
-  (testing "Overlap affine: finds suffix of s1 matching prefix of s2"
+(deftest semiglobal-affine-finds-alignment
+  (testing "Semi-global affine: finds a positive-scoring alignment"
     (let [S (sub/simple-substitution-matrix :dna :same 1 :different -1)
           result (alignment/pairwise-align "GATTACA" "TACAGAT" S {:d 5 :e 1}
-                   :type :overlap :gap-model :affine)]
+                   :type :semiglobal :gap-model :affine)]
       (is (pos? (:score result)))
       (is (pos? (count (:alignments result)))))))

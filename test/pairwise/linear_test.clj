@@ -95,43 +95,35 @@
       (is (every? (fn [[r c]] (or (= r last-row) (= c last-col))) starting)))))
 
 ;; ---------------------------------------------------------------------------
-;; Overlap alignment tests
+;; Semi-global alignment with DNA sequences (formerly overlap)
 ;; ---------------------------------------------------------------------------
 
-(deftest overlap-row0-free-col0-penalised
-  (testing "Overlap: row 0 is zero (s1 prefix free) but col 0 is penalised"
+(deftest semiglobal-dna-row0-col0-free
+  (testing "Semi-global DNA: row 0 and col 0 are zero (free leading gaps)"
     (let [S (sub/simple-substitution-matrix :dna :same 1 :different -1)
-          D (build-dp-matrix S 2 "GATTACA" "TACAGAT" :type :overlap)]
+          D (build-dp-matrix S 2 "GATTACA" "TACAGAT" :type :semiglobal)]
       ;; Row 0 should all be 0
       (doseq [c (range (inc (count "GATTACA")))]
         (is (zero? (get-in D [0 c :score]))
             (str "Row 0, col " c " should be 0")))
-      ;; Col 0 should be penalised (decreasing)
-      (doseq [r (range 1 (inc (count "TACAGAT")))]
-        (is (neg? (get-in D [r 0 :score]))
-            (str "Row " r ", col 0 should be negative"))))))
+      ;; Col 0 should all be 0 (semi-global frees both edges)
+      (doseq [r (range (inc (count "TACAGAT")))]
+        (is (zero? (get-in D [r 0 :score]))
+            (str "Row " r ", col 0 should be 0"))))))
 
-(deftest overlap-finds-suffix-prefix
-  (testing "Overlap: finds suffix of s1 matching prefix of s2"
+(deftest semiglobal-dna-finds-alignment
+  (testing "Semi-global DNA: finds a positive-scoring alignment"
     (let [S (sub/simple-substitution-matrix :dna :same 1 :different -1)
-          result (pairwise-align "GATTACA" "TACAGAT" S 2 :type :overlap)]
+          result (pairwise-align "GATTACA" "TACAGAT" S 2 :type :semiglobal)]
       (is (pos? (:score result)))
       (is (pos? (count (:alignments result)))))))
 
-(deftest overlap-alignment-shows-full-context
-  (testing "Overlap: alignment output shows suffix/prefix with flanking gaps"
+(deftest semiglobal-dna-alignment-shows-full-context
+  (testing "Semi-global DNA: alignment output shows full context"
     (let [S (sub/simple-substitution-matrix :dna :same 1 :different -1)
-          result (pairwise-align "GATTACA" "TACAGAT" S 2 :type :overlap)
+          result (pairwise-align "GATTACA" "TACAGAT" S 2 :type :semiglobal)
           aln (first (:alignments result))]
       (is (= (count (:top aln)) (count (:bottom aln)))
           "Aligned sequences should be the same length")
       ;; The alignment should be at least as long as the longer sequence
       (is (>= (count (:top aln)) (max (count "GATTACA") (count "TACAGAT")))))))
-
-(deftest overlap-traceback-starts-on-last-col
-  (testing "Overlap: traceback starts on last column only"
-    (let [S (sub/simple-substitution-matrix :dna :same 1 :different -1)
-          D (build-dp-matrix S 2 "GATTACA" "TACAGAT" :type :overlap)
-          starting (get-starting D :overlap)
-          last-col (dec (count (first D)))]
-      (is (every? (fn [[_r c]] (= c last-col)) starting)))))
