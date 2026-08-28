@@ -45,7 +45,8 @@ Thumbs.db
 
 # LaTeX - ignore everything in resources/tikz except source templates
 resources/tikz/*
-!resources/tikz/header.tex
+!resources/tikz/alignment-macros.tex
+!resources/tikz/preamble.tex
 !resources/tikz/footer.tex
 
 # LaTeX compilation artifacts

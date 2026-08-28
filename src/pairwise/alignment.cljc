@@ -116,6 +116,29 @@
       {:pattern :s1-extends-right
        :description "Sequence 2 is fully aligned; sequence 1 has an unmatched suffix."})))
 
+(defn match-line
+  "Conservation line for an alignment — one character per aligned column:
+
+     |  identical residues
+     :  a differing pair the scoring matrix favours (score > 0), i.e. a
+        conservative substitution
+     .  any other differing pair
+     ' ' a gap in either sequence
+
+   Strictly positive, following BLAST and EMBOSS. A log-odds matrix scores a
+   pair zero when it is observed exactly as often as chance predicts, which is
+   an absence of evidence for conservation rather than evidence for it. A pair
+   the matrix has no entry for likewise counts as dissimilar: similarity is
+   only claimed where the matrix actually vouches for it."
+  [{:keys [top bottom]} S]
+  (apply str
+         (map (fn [a b]
+                (cond
+                  (or (= a \-) (= b \-)) \space
+                  (= a b) \|
+                  :else (if (pos? (or (get S [a b]) (get S [b a]) 0)) \: \.)))
+              top bottom)))
+
 (defn- pad-alignment
   "Pad an alignment with flanking gaps for semi-global display.
    path is [start, ..., goal]; start is the high-index (bottom-right) end,
@@ -155,9 +178,10 @@
         padded     (if padded?
                      (map #(pad-alignment %1 %2 s1 s2) raw-alns paths)
                      raw-alns)
-        alignments (if padded?
+        annotated  (if padded?
                      (map #(merge % (classify-alignment %)) padded)
-                     padded)]
+                     padded)
+        alignments (map #(assoc % :middle (match-line % S)) annotated)]
     {:score          (alignment-score gap-model D type)
      :rows (count (seq s2))
      :cols (count (seq s1))

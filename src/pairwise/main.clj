@@ -55,6 +55,21 @@
     :id :seq-type]
    ["-o" "--output FILE" "Output TikZ/LaTeX to FILE (default: print text alignment)"
     :id :output]
+   [nil "--last-overlay N" "With -o: stop after N Beamer overlay steps (default: all)"
+    :parse-fn #(Integer/parseInt %)
+    :validate [pos? "Must be a positive integer"]
+    :id :last-overlay]
+   [nil "--overlays MODE" (str "With -o, what the handout keeps: "
+                               "all (the finished picture), "
+                               "all-but-traceback (the completed matrix, no optimal path), "
+                               "none (one static slide, no overlays at all), "
+                               "steps (nothing — the bare problem, slides step through), "
+                               "steps+solution (as steps, then jump to the finished picture)")
+    :default :all
+    :parse-fn keyword
+    :validate [#(contains? #{:all :all-but-traceback :none :steps :steps+solution} %)
+               "Must be 'all', 'all-but-traceback', 'none', 'steps' or 'steps+solution'"]
+    :id :overlays]
    ["-h" "--help" "Show this help message"]])
 
 (defn load-scoring-matrix
@@ -80,6 +95,9 @@
                     (fn [idx aln]
                       (str "Alignment " (inc idx) ":\n"
                            "Seq1: " (:top aln) "\n"
+                           ;; Conservation line, indented to sit under the
+                           ;; residues rather than under the "Seq1: " label.
+                           "      " (:middle aln) "\n"
                            "Seq2: " (:bottom aln)
                            (when (:description aln)
                              (str "\n[" (:description aln) "]"))))
@@ -126,7 +144,7 @@
 
       :else
       (try
-        (let [{:keys [s1 s2 matrix match mismatch gap-penalty gap-model gap-open gap-extend type seq-type output]} options
+        (let [{:keys [s1 s2 matrix match mismatch gap-penalty gap-model gap-open gap-extend type seq-type output last-overlay overlays]} options
               s1-clean (sub/sanitise s1 seq-type)
               s2-clean (sub/sanitise s2 seq-type)
               scoring-matrix (load-scoring-matrix matrix match mismatch seq-type)
@@ -136,10 +154,24 @@
               result (pairwise/pairwise-align s1-clean s2-clean scoring-matrix gap-pen
                        :type type :gap-model gap-model)]
 
+          (when (and (= overlays :steps+solution) (nil? last-overlay))
+            (binding [*out* *err*]
+              (println "Error: --overlays steps+solution needs --last-overlay N"
+                       "\n       (there is nothing to jump over without a cap)."))
+            (System/exit 1))
+
           (if output
             ;; TikZ output mode
             (do
-              (let [tikz-content (tikz/tikz-alignment result)]
+              (let [tikz-content (tikz/tikz-alignment
+                                  result
+                                  {:last-overlay last-overlay
+                                   ;; steps+solution differs from steps only in
+                                   ;; what happens past the cap.
+                                   :overflow (if (= overlays :steps+solution)
+                                               :collapse :drop)
+                                   :overlays (if (= overlays :steps+solution)
+                                               :steps overlays)})]
                 (spit output tikz-content)
                 (println "TikZ/LaTeX output written to:" output)
                 (println)
@@ -151,6 +183,9 @@
 
             ;; Text output mode (default)
             (do
+              (when (or last-overlay (not= overlays :all))
+                (binding [*out* *err*]
+                  (println "Note: --last-overlay/--overlays only affect TikZ output; use -o FILE.")))
               (println "Input sequences:")
               (println "  Seq1:" s1-clean)
               (println "  Seq2:" s2-clean)

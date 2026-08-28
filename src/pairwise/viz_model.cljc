@@ -77,8 +77,12 @@
                  ;; Handle both [r c] and [r c :state] nodes
                  from-r (first from) from-c (second from)
                  to-r (first to) to-c (second to)
-                 sub-type (get-in D [from-r from-c :substitution-type])
-                 direction (matrix/direction-between [from-r from-c] [to-r to-c])]
+                 direction (matrix/direction-between [from-r from-c] [to-r to-c])
+                 ;; :substitution-type describes the residue pair aligned by a
+                 ;; diagonal step. It is meaningless for gap moves, so only
+                 ;; attach it to diagonal arrows.
+                 sub-type (when (= direction :diag)
+                            (get-in D [from-r from-c :substitution-type]))]
              {:type :path-arrow
               :from-row from-r :from-col from-c
               :to-row to-r :to-col to-c
@@ -116,7 +120,8 @@
   [result]
   (let [paths (:optimal-paths result)
         path-steps (mapcat (partial partition 2 1) paths)
-        reveal-times (flatten (:optimal-path-steps result))]
+        reveal-times (flatten (:optimal-path-steps result))
+        D (:dp-matrix result)]
     (map (fn [step step-time]
            (let [from (first step)
                  to (second step)
@@ -126,6 +131,9 @@
               :from-row from-r :from-col from-c :from-state from-state
               :to-row to-r :to-col to-c :to-state to-state
               :direction (matrix/direction-between [from-r from-c] [to-r to-c])
+              ;; Only V'M steps align a residue pair; gap states do not.
+              :substitution-type (when (= from-state :M)
+                                   (get-in D [from-r from-c :substitution-type]))
               :arrow-type :optimal
               :step step-time}))
          path-steps reveal-times)))
@@ -140,10 +148,47 @@
   [instructions]
   (reduce max 0 (keep :step instructions)))
 
+(defn- truncate-instructions
+  "Limit the build to `n` overlay steps.
+
+   `overflow` decides what becomes of everything revealed later:
+     :drop      mark it :past-cap, so it never appears on a slide. It is marked
+                rather than removed because the cap limits the presentation,
+                not the printed page — a handout that shows the finished
+                picture must still show it. The renderer decides.
+     :collapse  move it all onto step n+1, so the slides step through to n and
+                then jump straight to the finished picture
+
+   Step numbers are assigned before this runs, so the opening n slides are
+   identical to the first n slides of the untruncated build either way.
+
+   A decomposition phase is dropped when it starts after n under both policies:
+   it is a separate exposition rather than part of the solution, and collapsing
+   its three overlays onto one slide would draw all three states at once."
+  [instructions n overflow]
+  (vec
+   (keep (fn [{:keys [step start-step states] :as inst}]
+           (cond
+             ;; A decomposition phase occupies one step per state.
+             start-step (let [kept (take (inc (- n start-step)) states)]
+                          (when (seq kept) (assoc inst :states (vec kept))))
+             ;; :grid and :seq-label carry no step — they are always drawn.
+             (nil? step) inst
+             (<= step n) inst
+             (= overflow :collapse) (assoc inst :step (inc n))
+             :else (assoc inst :past-cap true)))
+         instructions)))
+
 (defn alignment->instructions
   "Transform an alignment result into a renderer-agnostic sequence of
-   drawing instructions."
-  [result]
+   drawing instructions.
+
+   Options:
+     :last-overlay  keep only the first n overlay steps (nil = all)
+     :overflow      what to do with later steps, :drop (default) or :collapse
+                    (move them onto step n+1 as a single finished-picture slide)"
+  ([result] (alignment->instructions result nil))
+  ([result {:keys [last-overlay overflow] :or {overflow :drop}}]
   (let [D (:dp-matrix result)
         s1 (:sequence-1 result)
         s2 (:sequence-2 result)
@@ -158,23 +203,31 @@
                               st-dp st-path st-scores)
             decomp-start (inc (max-step all-insts))
             max-progressive (dec decomp-start)]
-        {:dimensions {:rows rows :cols cols}
-         :sequences {:top s1 :left s2}
-         :max-progressive-step max-progressive
-         :instructions
-         (vec (concat all-insts
-                      [{:type :decomposition-phase
-                        :states [:M :X :Y]
-                        :start-step decomp-start
-                        :state-scores (vec st-scores)
-                        :state-arrows (vec (concat st-dp st-path))}]))})
+        (let [insts (cond-> (vec (concat all-insts
+                                         [{:type :decomposition-phase
+                                           :states [:M :X :Y]
+                                           :start-step decomp-start
+                                           :state-scores (vec st-scores)
+                                           :state-arrows (vec (concat st-dp st-path))}]))
+                      last-overlay (truncate-instructions last-overlay overflow))]
+          {:dimensions {:rows rows :cols cols}
+           :sequences {:top s1 :left s2}
+           ;; The progressive fill must stop being drawn no later than the last
+           ;; slide that exists, or Beamer pads the deck with empty overlays.
+           ;; Derived from what survived, so :collapse keeps its extra slide.
+           ;; :past-cap instructions never reach a slide, so they must not
+           ;; stretch the window that bounds the ones that do.
+           :max-progressive-step (min max-progressive
+                                      (max-step (remove :past-cap insts)))
+           :instructions insts}))
       {:dimensions {:rows rows :cols cols}
        :sequences {:top s1 :left s2}
        :instructions
-       (vec (concat
-             [{:type :grid :rows rows :cols cols}]
-             (seq-labels s1 s2)
-             (cell-scores D cols)
-             (state-scores D cols)
-             (dp-arrows D cols)
-             (path-arrows result)))})))
+       (cond-> (vec (concat
+                     [{:type :grid :rows rows :cols cols}]
+                     (seq-labels s1 s2)
+                     (cell-scores D cols)
+                     (state-scores D cols)
+                     (dp-arrows D cols)
+                     (path-arrows result)))
+         last-overlay (truncate-instructions last-overlay overflow))}))))

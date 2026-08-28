@@ -57,17 +57,24 @@
   "Render a single IR instruction as Hiccup SVG."
   :type)
 
+(def ^:private direction-state
+  "Grid directions correspond one-to-one with the affine states, so linear and
+   affine visualisations share a single colour grammar: diagonal is a
+   substitution (V\u2032M), vertical a gap in the top sequence (V\u2032X),
+   horizontal a gap in the bottom sequence (V\u2032Y)."
+  {:diag :M :vert :X :horiz :Y})
+
 (defn- arrow-color
-  "Determine arrow colour from direction: diagonal=match (blue), vertical=gap in
-   top sequence (red), horizontal=gap in bottom sequence (green).
-   In the IR, from-row/col is the current cell; to-row/col is the predecessor."
-  [{:keys [from-row from-col to-row to-col]}]
-  (let [dr (- from-row to-row)
-        dc (- from-col to-col)]
-    (cond
-      (and (pos? dr) (pos? dc)) (state-color :M)  ; diagonal — match/mismatch
-      (and (pos? dr) (zero? dc)) (state-color :X)  ; vertical — gap in top seq
-      :else (state-color :Y))))                     ; horizontal — gap in bottom seq
+  "Arrow hue from the direction of the move, via the state it corresponds to."
+  [{:keys [direction]}]
+  (state-color (direction-state direction)))
+
+(defn- mismatch-dash
+  "Dashed strokes mark a diagonal step that aligns two different residues.
+   Line style is the only channel free once hue carries the move type and
+   weight carries optimality."
+  [substitution-type]
+  (when (= substitution-type :mismatch) "6,4"))
 
 (defmethod render-instruction :dp-arrow [{:keys [from-row from-col to-row to-col] :as inst}]
   (let [x1 (+ half-cell (* from-col cell-size))
@@ -83,6 +90,7 @@
         x2 (+ half-cell (* to-col cell-size))
         y2 (+ half-cell (* to-row cell-size))]
     [:line {:stroke (arrow-color inst) :stroke-width 4
+            :stroke-dasharray (mismatch-dash (:substitution-type inst))
             :x1 x1 :x2 x2 :y1 y1 :y2 y2}]))
 
 (defn- render-mask [{:keys [row col]}]
@@ -174,7 +182,7 @@
 
 (defn- render-state-arrow [{:keys [from-row from-col from-state
                                     to-row to-col to-state
-                                    arrow-type]} cs active-state]
+                                    substitution-type arrow-type]} cs active-state]
   (let [[fdx fdy] (state-offset from-state cs)
         [tdx tdy] (state-offset to-state cs)
         half (/ cs 2)
@@ -189,6 +197,7 @@
                   :else 0.15)
         width (if (= arrow-type :optimal) 4 1.5)]
     [:line {:stroke base-color :stroke-width width :opacity opacity
+            :stroke-dasharray (mismatch-dash substitution-type)
             :x1 x1 :x2 x2 :y1 y1 :y2 y2}]))
 
 ;; ---------------------------------------------------------------------------
@@ -472,10 +481,12 @@
               [gap-slider linear-gap-stops (:gap-penalty state)
                #(update-state! app-state :gap-penalty %)]))]]]))
 
-(defn display-alignment [{:keys [top bottom description]}]
+(defn display-alignment [{:keys [top middle bottom description]}]
   ^{:key (swap! app-item-id inc)}
   [:div {:class "mb-3"}
-   [:p {:class "font-mono text-sm mb-0"} top [:br] bottom]
+   ;; whitespace-pre: the conservation line encodes gaps as spaces, which HTML
+   ;; would otherwise collapse and knock the columns out of alignment.
+   [:p {:class "font-mono text-sm mb-0 whitespace-pre"} top [:br] middle [:br] bottom]
    (when description
      [:p {:class "text-xs text-gray-500 italic mt-1"} description])])
 

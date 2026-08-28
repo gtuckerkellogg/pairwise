@@ -214,3 +214,149 @@
       ;; DP matrix: (7+1) rows x (10+1) cols = 8x11
       (is (= {:rows 8 :cols 11} (:dimensions model)))
       (is (= 88 (count (instructions-of-type model :cell-score)))))))
+
+;; ---------------------------------------------------------------------------
+;; Substitution type is a property of diagonal steps only
+;; ---------------------------------------------------------------------------
+
+(deftest substitution-type-only-on-diagonal-path-arrows
+  (testing "Gap path arrows carry no :substitution-type"
+    ;; HEAGAWGHEE vs PAWHEAE needs gaps, so the optimal path mixes directions.
+    (let [model (viz/alignment->instructions heagawghee-result)
+          path-arrows (instructions-of-type model :path-arrow)
+          gaps (remove #(= :diag (:direction %)) path-arrows)]
+      (is (seq gaps) "fixture should exercise gap moves")
+      (is (every? #(nil? (:substitution-type %)) gaps)
+          "a vertical or horizontal move aligns no residue pair")))
+  (testing "Diagonal path arrows are classified as match or mismatch"
+    (let [model (viz/alignment->instructions heagawghee-result)
+          diags (filter #(= :diag (:direction %))
+                        (instructions-of-type model :path-arrow))]
+      (is (seq diags))
+      (is (every? #(#{:match :mismatch} (:substitution-type %)) diags)))))
+
+(deftest state-arrows-carry-substitution-type-only-for-m
+  (testing "Only V'M optimal state arrows describe a residue pair"
+    (let [model (viz/alignment->instructions affine-result)
+          optimal (filter #(= :optimal (:arrow-type %))
+                          (instructions-of-type model :state-arrow))
+          {m :M} (group-by :from-state optimal)
+          gap-states (remove #(= :M (:from-state %)) optimal)]
+      (is (seq m))
+      (is (every? #(#{:match :mismatch} (:substitution-type %)) m))
+      (is (every? #(nil? (:substitution-type %)) gap-states)))))
+
+(deftest direction-matches-from-state-in-affine
+  (testing "Each affine state moves in exactly one grid direction"
+    (let [model (viz/alignment->instructions affine-result)
+          expected {:M :diag :X :vert :Y :horiz}]
+      (doseq [{:keys [from-state direction]} (instructions-of-type model :state-arrow)]
+        (is (= (expected from-state) direction)
+            (str "state " from-state " should always move " (expected from-state)))))))
+
+;; ---------------------------------------------------------------------------
+;; :last-overlay truncation
+;; ---------------------------------------------------------------------------
+
+(defn- max-step-of [model]
+  (reduce max 0 (keep :step (:instructions model))))
+
+(deftest last-overlay-nil-changes-nothing
+  (testing "Omitting the option leaves the model untouched"
+    (doseq [result [heagawghee-result affine-result]]
+      (is (= (viz/alignment->instructions result)
+             (viz/alignment->instructions result {})
+             (viz/alignment->instructions result {:last-overlay nil}))))))
+
+(deftest last-overlay-caps-the-slides-not-the-content
+  (testing "Nothing reaches a slide after the requested step"
+    (doseq [result [heagawghee-result affine-result]
+            n [1 5 12]]
+      (let [insts (:instructions (viz/alignment->instructions result {:last-overlay n}))]
+        (is (<= (reduce max 0 (keep :step (remove :past-cap insts))) n)))))
+  (testing "but content past the cap is kept and marked, not discarded — the
+            cap limits the presentation, not what a handout may print"
+    (let [full (viz/alignment->instructions heagawghee-result)
+          cut  (viz/alignment->instructions heagawghee-result {:last-overlay 12})]
+      (is (= (count (filter :step (:instructions full)))
+             (count (filter :step (:instructions cut)))))
+      (is (seq (filter :past-cap (:instructions cut)))))))
+
+(deftest last-overlay-yields-a-prefix
+  (testing "The instructions that do reach a slide are exactly those the full
+            model reveals by that step — step numbers are not reassigned"
+    (doseq [result [heagawghee-result affine-result]
+            n [3 12 40]]
+      (let [full (:instructions (viz/alignment->instructions result))
+            cut  (:instructions (viz/alignment->instructions result {:last-overlay n}))
+            on-slides (remove :past-cap cut)
+            keep-full (filter #(let [s (:step %)] (or (nil? s) (<= s n))) full)]
+        ;; :decomposition-phase carries :start-step and is checked separately.
+        (is (= (remove :start-step keep-full)
+               (remove :start-step on-slides)))))))
+
+(deftest last-overlay-keeps-unstepped-instructions
+  (testing "Grid and sequence labels are always drawn, whatever the cap"
+    (let [model (viz/alignment->instructions heagawghee-result {:last-overlay 1})
+          types (set (map :type (:instructions model)))]
+      (is (contains? types :grid))
+      (is (contains? types :seq-label)))))
+
+(deftest last-overlay-trims-the-decomposition-phase
+  (testing "Decomposition states are dropped one slide at a time"
+    (let [full (viz/alignment->instructions affine-result)
+          decomp (first (filter #(= :decomposition-phase (:type %))
+                                (:instructions full)))
+          start (:start-step decomp)
+          states-at (fn [n]
+                      (-> (viz/alignment->instructions affine-result {:last-overlay n})
+                          (:instructions)
+                          (->> (filter #(= :decomposition-phase (:type %))))
+                          first
+                          :states))]
+      (is (= [:M :X :Y] (:states decomp)))
+      (is (nil? (states-at (dec start))) "phase gone entirely before it starts")
+      (is (= [:M] (states-at start)))
+      (is (= [:M :X] (states-at (inc start))))
+      (is (= [:M :X :Y] (states-at (+ start 2)))))))
+
+(deftest last-overlay-clamps-progressive-window
+  (testing "The progressive fill stops being drawn within the deck that exists,
+            so Beamer does not pad it with empty overlays"
+    (let [full (viz/alignment->instructions affine-result)]
+      (doseq [n [4 20]]
+        (is (= n (:max-progressive-step
+                  (viz/alignment->instructions affine-result {:last-overlay n})))))
+      (is (= (:max-progressive-step full)
+             (:max-progressive-step
+              (viz/alignment->instructions affine-result {:last-overlay 10000})))))))
+
+(deftest overflow-collapse-keeps-everything-on-one-extra-slide
+  (testing "Steps past the cap move to n+1 instead of being discarded"
+    (let [n 12
+          full (viz/alignment->instructions heagawghee-result)
+          coll (viz/alignment->instructions heagawghee-result
+                                            {:last-overlay n :overflow :collapse})
+          stepped (fn [m] (filter :step (:instructions m)))]
+      ;; Nothing is lost — only re-timed.
+      (is (= (count (stepped full)) (count (stepped coll))))
+      (is (= (inc n) (reduce max 0 (keep :step (:instructions coll)))))
+      (testing "the opening n slides are untouched"
+        (is (= (filter #(<= (:step %) n) (stepped full))
+               (filter #(<= (:step %) n) (stepped coll)))))
+      (testing "and everything later lands on exactly one slide"
+        (is (= (set [(inc n)])
+               (set (map :step (filter #(> (:step %) n) (stepped coll))))))))))
+
+(deftest overflow-drop-is-the-default
+  (testing "Unspecified overflow discards rather than collapses"
+    (is (= (viz/alignment->instructions heagawghee-result {:last-overlay 5})
+           (viz/alignment->instructions heagawghee-result
+                                        {:last-overlay 5 :overflow :drop})))))
+
+(deftest collapse-extends-the-progressive-window
+  (testing "The jump slide is inside the window, or its content would vanish"
+    (let [n 6
+          m (viz/alignment->instructions affine-result
+                                         {:last-overlay n :overflow :collapse})]
+      (is (= (inc n) (:max-progressive-step m))))))

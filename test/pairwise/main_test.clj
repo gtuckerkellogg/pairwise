@@ -1,5 +1,6 @@
 (ns pairwise.main-test
   (:require [clojure.test :refer :all]
+            [clojure.string]
             [clojure.tools.cli :refer [parse-opts]]
             [pairwise.main :refer [cli-options load-scoring-matrix format-alignment]]
             [pairwise.linear :as pairwise]
@@ -123,7 +124,20 @@
       (is (re-find #"Alignment Score: 14" output))
       (is (re-find #"Number of optimal alignments: 2" output))
       (is (re-find #"Seq1:" output))
-      (is (re-find #"Seq2:" output)))))
+      (is (re-find #"Seq2:" output))))
+  (testing "the conservation line sits between the two sequences and lines up
+            with the residues, not with the Seq1/Seq2 labels"
+    (let [S (sub/simple-substitution-matrix :protein :same 5 :different -5)
+          result (pairwise/pairwise-align "SIMILAR" "SIMMARE" S 3 :type :global)
+          block (->> (format-alignment result)
+                     clojure.string/split-lines
+                     (drop-while #(not (clojure.string/starts-with? % "Seq1:")))
+                     (take 3))
+          [top mid bottom] block]
+      (is (= "Seq1: SIMILAR-" top))
+      (is (= "      ||| .|| " mid))
+      (is (= "Seq2: SIM-MARE" bottom))
+      (is (= (count top) (count mid) (count bottom))))))
 
 ;; --- End-to-end: parsed options through to alignment ---
 

@@ -1,0 +1,95 @@
+\usetikzlibrary{calc}
+
+% Arrows point from the current cell back to its predecessor.
+%
+% Namespaced \aln... rather than the generic \drawup/\drawleft/\drawmatch,
+% which are plausible names for any document that draws arrows. Older generated
+% output defines those three itself with \newcommand; keeping them here made
+% \usepackage{alignment-macros} collide with such a file on load.
+\newcommand\alnup[3]{%
+  \draw[#3] ($(#1,#2) - (0.15,0)$) -- ($(#1,#2) - (0.85,0)$);
+}
+\newcommand\alnleft[3]{%
+  \draw[#3] ($(#1,#2) - (0,0.15)$) -- ($(#1,#2) - (0,0.85)$);
+}
+\newcommand\alnmatch[3]{%
+  \draw[#3] ($(#1,#2) - (0.15,0.15)$) -- ($(#1,#2) - (0.85,0.85)$);
+}
+
+% ---------------------------------------------------------------------------
+% Visualisation palette — shared with the web application.
+% Hue encodes what the move means; it is the same in linear and affine mode:
+%   M / diagonal   — substitution (match or mismatch)
+%   X / vertical   — gap in the top sequence
+%   Y / horizontal — gap in the left sequence
+% Weight and saturation encode optimality: dp-* are candidate moves the
+% recurrence considered, opt-* are moves on an optimal path.
+% Only opt-* carry an arrowhead. A cell's predecessors are always up and/or
+% left, so on a candidate arrow the head is redundant with the geometry and
+% only invites the question "why does this point backwards?". On the optimal
+% path the head marks a traversal the reader actually follows, and reinforces
+% the same distinction that weight and saturation already carry.
+% ---------------------------------------------------------------------------
+% Nothing here may assume a white page. Two knobs carry the document's own
+% colours; every other colour is mixed from a hue toward one of them, so the
+% picture inverts correctly on a dark theme instead of glowing against it:
+%   alnbg — the page. Score patches fill with it; pale candidate arrows mix
+%           toward it, so "washed out" always means "closer to the page".
+%   alnfg — the ink. Saturated score text mixes toward it.
+% Under beamer both follow the theme; elsewhere they default to black on white,
+% which reproduces the previous hardcoded output exactly.
+% \ifdefined rather than \@ifclassloaded because this file is also inlined
+% verbatim into standalone output, where @ is not a letter.
+\colorlet{alnbg}{white}
+\colorlet{alnfg}{black}
+\ifdefined\usebeamercolor
+  \AtBeginDocument{%
+    \usebeamercolor{background canvas}%
+    \colorlet{alnbg}{bg}%
+    \usebeamercolor{normal text}%
+    \colorlet{alnfg}{fg}%
+  }
+\fi
+
+% Styles resolve the mix at use time, so a document may \colorlet either knob
+% (or override a style outright) at any point and the picture follows.
+% Text sizes live here, not in the renderer, so a deck can enlarge the scores
+% without regenerating the picture:  \tikzset{aln-score/.append style={scale=1}}
+% The three affine state scores share one cell at +-0.3 offsets, so they must
+% stay smaller than the single linear score or three-digit values collide.
+% NB: TikZ's scale key is multiplicative, so the shared base must not set one
+% or a style building on it would compound the two factors.
+\tikzset{aln-score-base/.style={fill=alnbg,inner sep=1.5pt}}
+\tikzset{aln-score/.style={fill=alnbg,scale=0.7}}
+\tikzset{aln-state-score/.style={aln-score-base,scale=0.45}}
+\tikzset{aln-state-score-main/.style={aln-score-base,scale=0.5}}
+\tikzset{aln-seq-label/.style={scale=1}}
+\tikzset{aln-grid/.style={color=alnfg!25!alnbg}}
+
+\definecolor{vizM}{HTML}{56B4E9}
+\definecolor{vizX}{HTML}{DC2626}
+\definecolor{vizY}{HTML}{009E73}
+
+\tikzset{dp-M/.style={draw=vizM!40!alnbg,thick}}
+\tikzset{dp-X/.style={draw=vizX!40!alnbg,thick}}
+\tikzset{dp-Y/.style={draw=vizY!40!alnbg,thick}}
+\tikzset{opt-M/.style={->,>=latex,draw=vizM,fill=vizM,very thick}}
+\tikzset{opt-X/.style={->,>=latex,draw=vizX,fill=vizX,very thick}}
+\tikzset{opt-Y/.style={->,>=latex,draw=vizY,fill=vizY,very thick}}
+
+% Dimmed variants, used by the affine decomposition overlays to push the
+% two states that are not being discussed into the background.
+\tikzset{dp-M-dim/.style={draw=vizM!15!alnbg,thin}}
+\tikzset{dp-X-dim/.style={draw=vizX!15!alnbg,thin}}
+\tikzset{dp-Y-dim/.style={draw=vizY!15!alnbg,thin}}
+\tikzset{opt-M-dim/.style={->,>=latex,draw=vizM!25!alnbg,fill=vizM!25!alnbg,thick}}
+\tikzset{opt-X-dim/.style={->,>=latex,draw=vizX!25!alnbg,fill=vizX!25!alnbg,thick}}
+\tikzset{opt-Y-dim/.style={->,>=latex,draw=vizY!25!alnbg,fill=vizY!25!alnbg,thick}}
+
+% Affine gap state styles — score text, matching the arrow palette.
+\tikzset{text-M/.style={text=vizM!80!alnfg}}
+\tikzset{text-X/.style={text=vizX!80!alnfg}}
+\tikzset{text-Y/.style={text=vizY!80!alnfg}}
+\tikzset{text-M-dim/.style={text=vizM!30!alnbg}}
+\tikzset{text-X-dim/.style={text=vizX!30!alnbg}}
+\tikzset{text-Y-dim/.style={text=vizY!30!alnbg}}
